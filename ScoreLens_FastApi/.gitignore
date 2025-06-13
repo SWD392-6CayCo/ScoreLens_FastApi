@@ -1,0 +1,53 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+ENV/
+venv/
+pip-selfcheck.json
+
+# Editor config
+.idea/
+.vscode/
+
+# Certificates or sensitive files
+certs/
+*.pem
+*.key
+*.cert
+
+# Environment variables
+.env
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Pytest cache
+.pytest_cache/
+
+# FastAPI/Uvicorn specific
+*.db
+instance/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# mypy
+.mypy_cache/
+
+# Pycharm project settings
+*.iml
+.idea/
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
