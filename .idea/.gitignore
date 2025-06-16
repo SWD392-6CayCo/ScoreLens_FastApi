@@ -1,8 +1,68 @@
-# Default ignored files
-/shelf/
-/workspace.xml
-# Editor-based HTTP Client requests
-/httpRequests/
-# Datasource local storage ignored files
-/dataSources/
-/dataSources.local.xml
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+.env
+*.venv
+.venv/
+venv/
+ENV/
+env/
+*.log
+
+# FastAPI uvicorn reload logs
+*.pid
+
+# Kafka message logs (nếu có)
+kafka-logs/
+*.kafka
+
+# SSL Certificates
+certs/
+*.pem
+*.cert
+*.key
+*.jks
+*.p12
+
+# IDE config
+.idea/
+**/.idea/
+
+# VS Code config
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Virtual environment
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+
+# Build artifacts
+build/
+dist/
+*.egg
+*.whl
+
+# __init__ backup
+*.bak
+
+# Project-specific ignores
+logs/
+tmp/
