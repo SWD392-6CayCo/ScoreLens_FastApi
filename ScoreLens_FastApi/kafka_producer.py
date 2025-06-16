@@ -20,11 +20,12 @@ def producer():
         ssl_cafile=os.getenv("SSL_CA_CERT"),
         ssl_certfile=os.getenv("SSL_CERTFILE"),
         ssl_keyfile=os.getenv("SSL_KEYFILE"),
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        value_serializer=lambda v: v.encode("utf-8"),
     )
 
 def send_json_message(msg: KafkaMessageRequest):
-    producer().send(TOPIC_NAME, value=msg.model_dump())
+    producer().send(TOPIC_NAME, value=msg.model_dump_json())
+
 
 # đảm bảo các message còn nằm trong buffer của producer được gửi hết về Kafka broker ngay lập tức.
 def flush_producer():
