@@ -15,7 +15,7 @@ TOPIC_NAME = os.getenv("KAFKA_TOPIC")
 @lru_cache
 def producer():
     return KafkaProducer(
-        bootstrap_servers=f"kafka-5c346d1-kafka-scorelens.f.aivencloud.com:26036",
+        bootstrap_servers=os.getenv("KAFKA_BOOTSTRAP_SERVERS"),
         security_protocol="SSL",
         ssl_cafile=os.getenv("SSL_CA_CERT"),
         ssl_certfile=os.getenv("SSL_CERTFILE"),
@@ -24,7 +24,9 @@ def producer():
     )
 
 def send_json_message(msg: KafkaMessageRequest):
-    producer().send(TOPIC_NAME, value=msg.model_dump_json())
+    p = producer()
+    p.send(TOPIC_NAME, value=msg.model_dump_json())
+    p.flush()
 
 
 # đảm bảo các message còn nằm trong buffer của producer được gửi hết về Kafka broker ngay lập tức.
