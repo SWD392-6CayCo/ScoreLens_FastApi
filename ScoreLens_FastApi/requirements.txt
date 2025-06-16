@@ -3,3 +3,4 @@ uvicorn[standard]
 python-multipart
 confluent-kafka
 kafka-python
+python-dotenv
