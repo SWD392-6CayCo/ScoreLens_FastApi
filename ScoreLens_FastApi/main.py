@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from typing import Dict, Any
 
-from ScoreLens_FastApi.app.core.kafka_producer_config import send_json_message
+from ScoreLens_FastApi.app.config.kafka_producer_config import send_json_message
 from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest
 
 from ScoreLens_FastApi.app.service.s3_service import (
