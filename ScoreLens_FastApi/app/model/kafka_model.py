@@ -18,8 +18,8 @@ class KafkaMessage(Base):
     player_id = Column(Integer)
     round_id = Column(Integer)
 
-    balls = relationship("Ball", back_populates="kafka_message")
-    collisions = relationship("Collision", back_populates="kafka_message")
+    balls = relationship("Ball", back_populates="kafka_message", cascade="all, delete-orphan")
+    collisions = relationship("Collision", back_populates="kafka_message", cascade="all, delete-orphan")
 
 
 class Ball(Base):

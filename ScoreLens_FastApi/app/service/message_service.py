@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from ScoreLens_FastApi.app.model.kafka_model import KafkaMessage, Ball, Collision
-from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest
+from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest, EventRequest
 from typing import List
 from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse, BallResponse, CollisionResponse
 
@@ -13,7 +13,8 @@ def create_kafka_message(db: Session, message_request: KafkaMessageRequest):
         is_uncertain=message_request.isUncertain,
         message=message_request.message,
         scene_url=message_request.sceneUrl,
-        match_id=message_request.matchId
+        player_id=message_request.playerId,
+        round_id=message_request.roundId,
     )
     db.add(kafka_message)
     db.flush()  # để lấy id sau khi insert
@@ -59,6 +60,22 @@ def delete_kafka_message(db: Session, message_id: int):
         db.commit()
     return message
 
+def delete_kafka_message_by_round(db: Session, round_id: int):
+    msg_list = db.query(KafkaMessage).filter(KafkaMessage.round_id == round_id).all()
+    if not msg_list: return 0
+    for tmp in msg_list:
+        db.delete(tmp)
+    db.commit()
+    return len(msg_list)
+
+def delete_kafka_message_by_player(db: Session, player_id: int):
+    msg_list = db.query(KafkaMessage).filter(KafkaMessage.player_id == player_id).all()
+    if not msg_list: return 0
+    for tmp in msg_list:
+        db.delete(tmp)
+    db.commit()
+    return len(msg_list)
+
 
 #***************************************** mapper ***********************************************
 def convert_kafka_message_to_response(kafka_message: KafkaMessage) -> KafkaMessageResponse:
@@ -87,9 +104,22 @@ def convert_kafka_message_to_response(kafka_message: KafkaMessage) -> KafkaMessa
         isUncertain=kafka_message.is_uncertain,
         message=kafka_message.message,
         sceneUrl=kafka_message.scene_url,
-        matchId=kafka_message.match_id
+        playerId=kafka_message.player_id,
+        roundId=kafka_message.round_id
     )
 
 def convert_kafka_messages_to_responses(kafka_messages: List[KafkaMessage]) -> List[KafkaMessageResponse]:
     return [convert_kafka_message_to_response(message) for message in kafka_messages]
+
+def convert_kafka_message_to_event_request(message: KafkaMessage) -> EventRequest:
+    return EventRequest(
+        playerId=message.player_id,
+        roundId=message.round_id,
+        scoreValue=message.score_value,
+        isFoul=message.is_foul,
+        isUncertain=message.is_uncertain,
+        message=message.message,
+        sceneUrl=message.scene_url
+    )
+
 

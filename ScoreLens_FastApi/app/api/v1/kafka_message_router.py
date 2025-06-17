@@ -3,11 +3,15 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy session
+from ScoreLens_FastApi.app.config.kafka_producer_config import send_json_message
 from ScoreLens_FastApi.app.service import message_service
 from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest
 from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse  # nếu cần response schema
 from ScoreLens_FastApi.app.service.message_service import convert_kafka_message_to_response, \
-    convert_kafka_messages_to_responses
+    convert_kafka_messages_to_responses, convert_kafka_message_to_event_request
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/kafka-messages",
@@ -17,8 +21,22 @@ router = APIRouter(
 # Tạo message mới
 @router.post("/", response_model=KafkaMessageResponse, status_code=status.HTTP_201_CREATED)
 def create_message(message_request: KafkaMessageRequest, db: Session = Depends(get_db)):
-    message = message_service.create_kafka_message(db, message_request)
-    return convert_kafka_message_to_response(message)
+    try:
+        # Lưu vào database
+        message = message_service.create_kafka_message(db, message_request)
+
+        # Convert và gửi Kafka
+        event_request = convert_kafka_message_to_event_request(message)
+        send_json_message(event_request)
+        logger.info("Sent Kafka message successfully")
+
+        # Trả response
+        return convert_kafka_message_to_response(message)
+
+    except Exception as e:
+        logger.exception(f"Failed to create and send Kafka message: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create and send Kafka message")
+
 
 # Lấy danh sách messages
 @router.get("/", response_model=List[KafkaMessageResponse])
@@ -41,3 +59,42 @@ def delete_message(message_id: int, db: Session = Depends(get_db)):
     if not message:
         raise HTTPException(status_code=404, detail="Kafka message not found")
     return convert_kafka_message_to_response(message)
+
+# Xóa theo round
+@router.delete("/by-round/{round_id}")
+def delete_message_by_round(round_id: int, db: Session = Depends(get_db)):
+    msg_list = message_service.delete_kafka_message_by_round(db, round_id)
+    if msg_list == 0:
+        raise HTTPException(status_code=404, detail="No messages found to delete for this round.")
+    return {"deleted_count": msg_list}
+
+# Xóa theo player
+@router.delete("/by-player/{player_id}")
+def delete_message_by_player(player_id: int, db: Session = Depends(get_db)):
+    msg_list = message_service.delete_kafka_message_by_player(db, player_id)
+    if msg_list == 0:
+        raise HTTPException(status_code=404, detail="No messages found to delete for this player.")
+    return {"deleted_count": msg_list}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
