@@ -2,12 +2,16 @@ from sqlalchemy import Column
 from sqlalchemy.orm import Session
 from ScoreLens_FastApi.app.model.kafka_model import KafkaMessage, Ball, Collision
 from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest
+from typing import List
 from sqlalchemy import DateTime
 from sqlalchemy.sql import func
 
+from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse, BallResponse, CollisionResponse
+
+
 def create_kafka_message(db: Session, message_request: KafkaMessageRequest):
     kafka_message = KafkaMessage(
-        timestamp=Column(DateTime(timezone=True), server_default=func.now()),
+        # timestamp=Column(DateTime(timezone=True), server_default=func.now()),
         cue_ball_id=message_request.cueBallId,
         score_value=message_request.scoreValue,
         is_foul=message_request.isFoul,
@@ -55,3 +59,38 @@ def delete_kafka_message(db: Session, message_id: int):
         db.delete(message)
         db.commit()
     return message
+
+
+#***************************************** mapper ***********************************************
+def convert_kafka_message_to_response(kafka_message: KafkaMessage) -> KafkaMessageResponse:
+    return KafkaMessageResponse(
+        id=kafka_message.id,
+        timestamp=kafka_message.timestamp,
+        cueBallId=kafka_message.cue_ball_id,
+        balls=[
+            BallResponse(
+                start=[ball.start_x, ball.start_y],
+                end=[ball.end_x, ball.end_y],
+                potted=ball.potted
+            )
+            for ball in kafka_message.balls
+        ],
+        collisions=[
+            CollisionResponse(
+                ball1=col.ball1,
+                ball2=col.ball2,
+                time=col.time
+            )
+            for col in kafka_message.collisions
+        ],
+        scoreValue=kafka_message.score_value,
+        isFoul=kafka_message.is_foul,
+        isUncertain=kafka_message.is_uncertain,
+        message=kafka_message.message,
+        sceneUrl=kafka_message.scene_url,
+        matchId=kafka_message.match_id
+    )
+
+def convert_kafka_messages_to_responses(kafka_messages: List[KafkaMessage]) -> List[KafkaMessageResponse]:
+    return [convert_kafka_message_to_response(message) for message in kafka_messages]
+

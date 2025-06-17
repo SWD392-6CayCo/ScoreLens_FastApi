@@ -57,7 +57,7 @@ coverage.xml
 alembic/versions/*.pyc
 
 # Environments
-.env
+../.env
 .env.*
 
 # Certificates / sensitive cert keys

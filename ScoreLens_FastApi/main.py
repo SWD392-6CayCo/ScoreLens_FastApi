@@ -1,6 +1,6 @@
 import logging
 from fastapi import FastAPI
-from ScoreLens_FastApi.app.api.v1 import kafka_router, s3_router
+from ScoreLens_FastApi.app.api.v1 import kafka_router, s3_router, kafka_message_router
 
 
 # Cấu hình logging
@@ -16,6 +16,7 @@ def health_check():
 # Include routers
 app.include_router(kafka_router.router)
 app.include_router(s3_router.router)
+app.include_router(kafka_message_router.router)
 
 
 

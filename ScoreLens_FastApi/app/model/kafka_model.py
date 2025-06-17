@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from ScoreLens_FastApi.app.config.db import Base
 
@@ -6,7 +8,7 @@ class KafkaMessage(Base):
     __tablename__ = "kafka_message"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(String)
+    timestamp = Column(DateTime, default=datetime.now())
     cue_ball_id = Column(Integer)
     score_value = Column(Integer)
     is_foul = Column(Boolean)
