@@ -4,12 +4,12 @@ import logging
 import mimetypes
 from typing import List, Optional
 
-import boto3
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
 
+from ScoreLens_FastApi.app.config.s3_config import s3_client
 
-# Load biến môi trường từ .env
+#load biến env
 load_dotenv()
 
 # Cấu hình logging
@@ -21,14 +21,6 @@ AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = os.getenv("AWS_REGION")
 AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
-
-# Khởi tạo S3 client
-s3_client = boto3.client(
-    "s3",
-    region_name=AWS_REGION,
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-)
 
 
 def upload_file_to_s3_with_prefix(file_obj, folder_name: str, original_filename: str) -> str:
@@ -45,7 +37,7 @@ def upload_file_to_s3_with_prefix(file_obj, folder_name: str, original_filename:
         content_type = 'application/octet-stream'  # fallback nếu không đoán được
 
     try:
-        s3_client.upload_fileobj(
+        s3_client().upload_fileobj(
             file_obj,
             AWS_BUCKET_NAME,
             s3_key,
@@ -71,7 +63,7 @@ def list_files_in_bucket(prefix: Optional[str] = None) -> List[str]:
         if prefix:
             params["Prefix"] = prefix
 
-        response = s3_client.list_objects_v2(**params)
+        response = s3_client().list_objects_v2(**params)
         contents = response.get("Contents", [])
         file_keys = [item["Key"] for item in contents]
 
@@ -86,7 +78,7 @@ def list_files_in_bucket(prefix: Optional[str] = None) -> List[str]:
 def delete_file_from_s3(filename: str) -> None:
     try:
         logger.info(f"Deleting S3 key: {filename}")
-        response = s3_client.delete_object(Bucket=AWS_BUCKET_NAME, Key=filename)
+        response = s3_client().delete_object(Bucket=AWS_BUCKET_NAME, Key=filename)
         logger.info(f"Delete response: {response}")
     except ClientError as e:
         logger.error(f"Failed to delete file: {e}")
@@ -99,7 +91,7 @@ def generate_presigned_url(filename: str, expiration: int = 3600) -> Optional[st
     Tạo presigned URL cho file, tồn tại trong thời gian expiration (giây).
     """
     try:
-        url = s3_client.generate_presigned_url(
+        url = s3_client().generate_presigned_url(
             "get_object",
             Params={"Bucket": AWS_BUCKET_NAME, "Key": filename},
             ExpiresIn=expiration

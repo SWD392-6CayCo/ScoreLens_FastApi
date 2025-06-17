@@ -16,7 +16,6 @@ class Collision(BaseModel):
 
 
 class KafkaMessageRequest(BaseModel):
-    timestamp: str
     cueBallId: int
     balls: List[Ball]
     collisions: List[Collision]

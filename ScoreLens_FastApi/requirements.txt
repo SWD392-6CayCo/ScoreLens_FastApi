@@ -7,3 +7,19 @@ python-dotenv
 
 #asw s3
 boto3
+
+#postgres
+sqlalchemy  #ORM giống hybernate
+psycopg2-binary #postgre driver
+alembic #quản lý migrate DB schema
+
+
+#alembic init alembic
+
+#khi có model mới hoặc sửa model
+#set PYTHONPATH=.
+#alembic revision --autogenerate -m "create balls table"
+
+#tạo db
+#alembic upgrade head
+
