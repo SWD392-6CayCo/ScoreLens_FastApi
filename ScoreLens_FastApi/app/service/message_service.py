@@ -1,17 +1,12 @@
-from sqlalchemy import Column
 from sqlalchemy.orm import Session
 from ScoreLens_FastApi.app.model.kafka_model import KafkaMessage, Ball, Collision
 from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest
 from typing import List
-from sqlalchemy import DateTime
-from sqlalchemy.sql import func
-
 from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse, BallResponse, CollisionResponse
 
 
 def create_kafka_message(db: Session, message_request: KafkaMessageRequest):
     kafka_message = KafkaMessage(
-        # timestamp=Column(DateTime(timezone=True), server_default=func.now()),
         cue_ball_id=message_request.cueBallId,
         score_value=message_request.scoreValue,
         is_foul=message_request.isFoul,

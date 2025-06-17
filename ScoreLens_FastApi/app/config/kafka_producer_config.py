@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 from kafka import KafkaProducer
 
 
-from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest
+from ScoreLens_FastApi.app.request.kafka_request import EventRequest
 
 load_dotenv()
 
-TOPIC_NAME = os.getenv("KAFKA_TOPIC")
+TOPIC_NAME = os.getenv("KAFKA_TOPIC_PRODUCER")
 
 # khỏi tạo producer một lần duy nhất
 @lru_cache
@@ -23,7 +23,7 @@ def producer():
         value_serializer=lambda v: v.encode("utf-8"),
     )
 
-def send_json_message(msg: KafkaMessageRequest):
+def send_json_message(msg: EventRequest):
     p = producer()
     p.send(TOPIC_NAME, value=msg.model_dump_json())
     p.flush()

@@ -18,12 +18,13 @@ class KafkaMessageResponse(BaseModel):
     cueBallId: int
     balls: List[BallResponse]
     collisions: List[CollisionResponse]
-    scoreValue: int
+    scoreValue: bool
     isFoul: bool
     isUncertain: bool
     message: str
     sceneUrl: str
-    matchId: int
+    playerId: int
+    roundId: int
 
     class Config:
         from_attributes = True

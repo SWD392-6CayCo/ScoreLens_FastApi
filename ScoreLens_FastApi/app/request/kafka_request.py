@@ -18,10 +18,20 @@ class KafkaMessageRequest(BaseModel):
     cueBallId: int
     balls: List[Ball]
     collisions: List[Collision]
-    scoreValue: int
+    scoreValue: bool
     isFoul: bool
     isUncertain: bool
     message: str
     sceneUrl: str
-    matchId: int
+    playerId: int
+    roundId: int
+
+class EventRequest(BaseModel):
+    playerId: int
+    roundId: int
+    scoreValue: bool
+    isFoul: bool
+    isUncertain: bool
+    message: str
+    sceneUrl: str
 
