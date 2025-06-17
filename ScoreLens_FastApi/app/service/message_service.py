@@ -24,11 +24,15 @@ def create_kafka_message(db: Session, message_request: KafkaMessageRequest):
     db.flush()  # để lấy id sau khi insert
 
     for ball_req in message_request.balls:
+        start_x = ball_req.start[0] if len(ball_req.start) > 0 else 0
+        start_y = ball_req.start[1] if len(ball_req.start) > 1 else 0
+        end_x = ball_req.end[0] if len(ball_req.end) > 0 else 0
+        end_y = ball_req.end[1] if len(ball_req.end) > 1 else 0
         ball = Ball(
-            start_x=ball_req.start[0],
-            start_y=ball_req.start[1],
-            end_x=ball_req.end[0],
-            end_y=ball_req.end[1],
+            start_x=start_x,
+            start_y=start_y,
+            end_x=end_x,
+            end_y=end_y,
             potted=ball_req.potted,
             kafka_message_id=kafka_message.id
         )
