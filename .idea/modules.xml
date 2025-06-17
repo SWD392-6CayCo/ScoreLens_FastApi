@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/ScoreLens_FastApi.iml" filepath="$PROJECT_DIR$/.idea/ScoreLens_FastApi.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/BE_FastApi.iml" filepath="$PROJECT_DIR$/.idea/BE_FastApi.iml" />
     </modules>
   </component>
 </project>

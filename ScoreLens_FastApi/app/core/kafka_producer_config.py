@@ -1,11 +1,11 @@
-import json
 import os
 from functools import lru_cache
 
 from dotenv import load_dotenv
 from kafka import KafkaProducer
 
-from kafka_request import KafkaMessageRequest
+
+from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest
 
 load_dotenv()
 

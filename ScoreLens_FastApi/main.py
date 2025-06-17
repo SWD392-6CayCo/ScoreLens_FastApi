@@ -1,11 +1,11 @@
 import logging
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
 from typing import Dict, Any
 
-from kafka_request import KafkaMessageRequest
-from kafka_producer import send_json_message
-from s3_service import (
+from ScoreLens_FastApi.app.core.kafka_producer_config import send_json_message
+from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest
+
+from ScoreLens_FastApi.app.service.s3_service import (
     upload_file_to_s3_with_prefix,
     list_files_in_bucket,
     delete_file_from_s3,
