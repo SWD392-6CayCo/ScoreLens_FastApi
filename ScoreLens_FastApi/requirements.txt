@@ -4,3 +4,6 @@ python-multipart
 confluent-kafka
 kafka-python
 python-dotenv
+
+#asw s3
+boto3
