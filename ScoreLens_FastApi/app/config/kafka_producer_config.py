@@ -25,7 +25,7 @@ def producer():
 
 def send_json_message(msg: EventRequest):
     p = producer()
-    p.send(TOPIC_NAME, value=msg.model_dump_json())
+    p.send("ai-noti", value=msg.model_dump_json())
     p.flush()
 
 def send_json_logging(msg: LogMessageRequest):
