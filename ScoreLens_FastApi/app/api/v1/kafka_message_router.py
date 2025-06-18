@@ -3,12 +3,12 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy session
-from ScoreLens_FastApi.app.config.kafka_producer_config import send_json_message
+from ScoreLens_FastApi.app.config.kafka_producer_config import send_json_message, send_json_logging
 from ScoreLens_FastApi.app.service import message_service
-from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest
+from ScoreLens_FastApi.app.request.kafka_request import LogMessageRequest, LogMessageCreateRequest
 from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse  # nếu cần response schema
 from ScoreLens_FastApi.app.service.message_service import convert_kafka_message_to_response, \
-    convert_kafka_messages_to_responses, convert_kafka_message_to_event_request
+    convert_kafka_messages_to_responses
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,14 +20,14 @@ router = APIRouter(
 
 # Tạo message mới
 @router.post("/", response_model=KafkaMessageResponse, status_code=status.HTTP_201_CREATED)
-def create_message(message_request: KafkaMessageRequest, db: Session = Depends(get_db)):
+def create_message(log_request: LogMessageCreateRequest, db: Session = Depends(get_db)):
     try:
+        message_request = LogMessageRequest(**log_request.model_dump())
         # Lưu vào database
         message = message_service.create_kafka_message(db, message_request)
-
-        # Convert và gửi Kafka
-        event_request = convert_kafka_message_to_event_request(message)
-        send_json_message(event_request)
+        logger.info("save into db successfully")
+        # gửi msg qua kafka
+        send_json_logging(message_request)
         logger.info("Sent Kafka message successfully")
 
         # Trả response

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from kafka import KafkaProducer
 
 
-from ScoreLens_FastApi.app.request.kafka_request import EventRequest
+from ScoreLens_FastApi.app.request.kafka_request import EventRequest, LogMessageRequest
 
 load_dotenv()
 
@@ -24,6 +24,11 @@ def producer():
     )
 
 def send_json_message(msg: EventRequest):
+    p = producer()
+    p.send(TOPIC_NAME, value=msg.model_dump_json())
+    p.flush()
+
+def send_json_logging(msg: LogMessageRequest):
     p = producer()
     p.send(TOPIC_NAME, value=msg.model_dump_json())
     p.flush()

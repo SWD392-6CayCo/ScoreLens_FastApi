@@ -1,20 +1,22 @@
 from sqlalchemy.orm import Session
 from ScoreLens_FastApi.app.model.kafka_model import KafkaMessage, Ball, Collision
-from ScoreLens_FastApi.app.request.kafka_request import KafkaMessageRequest, EventRequest
+from ScoreLens_FastApi.app.request.kafka_request import LogMessageRequest, EventRequest
 from typing import List
 from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse, BallResponse, CollisionResponse
+from uuid import uuid4
+from typing import Optional
 
 
-def create_kafka_message(db: Session, message_request: KafkaMessageRequest):
+def create_kafka_message(db: Session, message_request: LogMessageRequest):
     kafka_message = KafkaMessage(
         cue_ball_id=message_request.cueBallId,
-        score_value=message_request.scoreValue,
-        is_foul=message_request.isFoul,
-        is_uncertain=message_request.isUncertain,
+        score_value=message_request.details.scoreValue if message_request.details else False,
+        is_foul=message_request.details.isFoul if message_request.details else False,
+        is_uncertain=message_request.details.isUncertain if message_request.details else False,
         message=message_request.message,
-        scene_url=message_request.sceneUrl,
-        player_id=message_request.playerId,
-        round_id=message_request.roundId,
+        scene_url=message_request.details.sceneUrl if message_request.details else "",
+        player_id=message_request.details.playerId if message_request.details else 0,
+        round_id=message_request.details.roundId if message_request.details else 0,
     )
     db.add(kafka_message)
     db.flush()  # để lấy id sau khi insert

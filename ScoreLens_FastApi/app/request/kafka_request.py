@@ -1,5 +1,8 @@
-from pydantic import BaseModel
-from typing import List
+from datetime import datetime
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 
 class Ball(BaseModel):
@@ -13,19 +16,6 @@ class Collision(BaseModel):
     ball2: int
     time: float
 
-
-class KafkaMessageRequest(BaseModel):
-    cueBallId: int
-    balls: List[Ball]
-    collisions: List[Collision]
-    scoreValue: bool
-    isFoul: bool
-    isUncertain: bool
-    message: str
-    sceneUrl: str
-    playerId: int
-    roundId: int
-
 class EventRequest(BaseModel):
     playerId: int
     roundId: int
@@ -34,4 +24,25 @@ class EventRequest(BaseModel):
     isUncertain: bool
     message: str
     sceneUrl: str
+
+class LogMessageCreateRequest(BaseModel):
+    level: str
+    type: str
+    cueBallId: int
+    balls: List[Ball]
+    collisions: List[Collision]
+    message: str
+    details: Optional[EventRequest] = None
+
+class LogMessageRequest(BaseModel):
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+    service: str = "fastapi-ai-camera"
+    level: str
+    type: str
+    trace_id: str = Field(default_factory=lambda: str(uuid4()))
+    cueBallId: int
+    balls: List[Ball]
+    collisions: List[Collision]
+    message: str
+    details: Optional[EventRequest] = None
 
