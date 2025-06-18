@@ -14,7 +14,7 @@ class CollisionResponse(BaseModel):
 
 class BaseEventData(BaseModel):
     playerId: int
-    roundId: int
+    gameSetId: int
     scoreValue: bool
     isFoul: bool
     isUncertain: bool
@@ -33,7 +33,7 @@ class KafkaMessageResponse(BaseModel):
     message: str
     sceneUrl: str
     playerId: int
-    roundId: int
+    gameSetId: int
 
     class Config:
         from_attributes = True

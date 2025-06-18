@@ -17,8 +17,8 @@ class Collision(BaseModel):
     time: float
 
 class EventRequest(BaseModel):
-    playerId: int
-    roundId: int
+    playerID: int
+    gameSetID: int
     scoreValue: bool
     isFoul: bool
     isUncertain: bool

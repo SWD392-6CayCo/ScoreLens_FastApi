@@ -15,8 +15,8 @@ def create_kafka_message(db: Session, message_request: LogMessageRequest):
         is_uncertain=message_request.details.isUncertain if message_request.details else False,
         message=message_request.message,
         scene_url=message_request.details.sceneUrl if message_request.details else "",
-        player_id=message_request.details.playerId if message_request.details else 0,
-        round_id=message_request.details.roundId if message_request.details else 0,
+        player_id=message_request.details.playerID if message_request.details else 0,
+        game_set_id=message_request.details.gameSetID if message_request.details else 0,
     )
     db.add(kafka_message)
     db.flush()  # để lấy id sau khi insert
@@ -62,8 +62,8 @@ def delete_kafka_message(db: Session, message_id: int):
         db.commit()
     return message
 
-def delete_kafka_message_by_round(db: Session, round_id: int):
-    msg_list = db.query(KafkaMessage).filter(KafkaMessage.round_id == round_id).all()
+def delete_kafka_message_by_game_set(db: Session, game_set_id: int):
+    msg_list = db.query(KafkaMessage).filter(KafkaMessage.game_set_id == game_set_id).all()
     if not msg_list: return 0
     for tmp in msg_list:
         db.delete(tmp)
@@ -107,7 +107,7 @@ def convert_kafka_message_to_response(kafka_message: KafkaMessage) -> KafkaMessa
         message=kafka_message.message,
         sceneUrl=kafka_message.scene_url,
         playerId=kafka_message.player_id,
-        roundId=kafka_message.round_id
+        gameSetId=kafka_message.game_set_id
     )
 
 def convert_kafka_messages_to_responses(kafka_messages: List[KafkaMessage]) -> List[KafkaMessageResponse]:
@@ -115,8 +115,8 @@ def convert_kafka_messages_to_responses(kafka_messages: List[KafkaMessage]) -> L
 
 def convert_kafka_message_to_event_request(message: KafkaMessage) -> EventRequest:
     return EventRequest(
-        playerId=message.player_id,
-        roundId=message.round_id,
+        playerID=message.player_id,
+        gameSetID=message.game_set_id,
         scoreValue=message.score_value,
         isFoul=message.is_foul,
         isUncertain=message.is_uncertain,

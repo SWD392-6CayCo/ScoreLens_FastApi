@@ -16,7 +16,7 @@ class KafkaMessage(Base):
     message = Column(String)
     scene_url = Column(String)
     player_id = Column(Integer)
-    round_id = Column(Integer)
+    game_set_id = Column(Integer)
 
     balls = relationship("Ball", back_populates="kafka_message", cascade="all, delete-orphan")
     collisions = relationship("Collision", back_populates="kafka_message", cascade="all, delete-orphan")

@@ -61,11 +61,11 @@ def delete_message(message_id: int, db: Session = Depends(get_db)):
     return convert_kafka_message_to_response(message)
 
 # Xóa theo round
-@router.delete("/by-round/{round_id}")
-def delete_message_by_round(round_id: int, db: Session = Depends(get_db)):
-    msg_list = message_service.delete_kafka_message_by_round(db, round_id)
+@router.delete("/by-game-set/{game_set_id}")
+def delete_message_by_round(game_set_id: int, db: Session = Depends(get_db)):
+    msg_list = message_service.delete_kafka_message_by_game_set(db, game_set_id)
     if msg_list == 0:
-        raise HTTPException(status_code=404, detail="No messages found to delete for this round.")
+        raise HTTPException(status_code=404, detail="No messages found to delete for this game set.")
     return {"deleted_count": msg_list}
 
 # Xóa theo player
