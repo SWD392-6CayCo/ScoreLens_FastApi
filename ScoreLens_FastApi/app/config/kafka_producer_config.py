@@ -9,7 +9,7 @@ from ScoreLens_FastApi.app.request.kafka_request import EventRequest, LogMessage
 
 load_dotenv()
 
-TOPIC_NAME = os.getenv("KAFKA_TOPIC_PRODUCER")
+TOPIC_PRODUCER = os.getenv("KAFKA_TOPIC_PRODUCER")
 
 # khỏi tạo producer một lần duy nhất
 @lru_cache
@@ -30,7 +30,7 @@ def send_json_message(msg: EventRequest):
 
 def send_json_logging(msg: LogMessageRequest):
     p = producer()
-    p.send(TOPIC_NAME, value=msg.model_dump_json())
+    p.send(TOPIC_PRODUCER, value=msg.model_dump_json(), partition=0)
     p.flush()
 
 

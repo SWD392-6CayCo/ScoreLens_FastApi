@@ -1,0 +1,52 @@
+import os
+import json
+from functools import lru_cache
+from dotenv import load_dotenv
+from kafka import KafkaConsumer, TopicPartition
+
+load_dotenv()
+
+TOPIC_NAME = os.getenv("KAFKA_TOPIC_CONSUMER")
+BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
+SSL_CA_CERT = os.getenv("SSL_CA_CERT")
+SSL_CERTFILE = os.getenv("SSL_CERTFILE")
+SSL_KEYFILE = os.getenv("SSL_KEYFILE")
+GROUP_ID = 'fastapi-consumer-group'
+
+# Khởi tạo consumer 1 lần duy nhất
+@lru_cache
+def consumer_config():
+    return KafkaConsumer(
+        TOPIC_NAME,
+        bootstrap_servers=BOOTSTRAP_SERVERS,
+        security_protocol="SSL",
+        ssl_cafile=SSL_CA_CERT,
+        ssl_certfile=SSL_CERTFILE,
+        ssl_keyfile=SSL_KEYFILE,
+        auto_offset_reset='earliest',
+        enable_auto_commit=True,
+        group_id=GROUP_ID,
+        value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+        connections_max_idle_ms=600000
+    )
+
+def assign_partition(partition=0):
+    c = consumer_config()
+    tp = TopicPartition(TOPIC_NAME, partition)
+    c.assign([tp])
+    print(f"Consumer assigned to partition {partition} of topic '{TOPIC_NAME}'.")
+    return c
+
+def consume_messages(partition=0):
+    c = assign_partition(partition)
+    try:
+        for message in c:
+            event = message.value
+            print(f"[Partition {message.partition}] Offset {message.offset}: {event}")
+    except KeyboardInterrupt:
+        print("Consumer stopped by user.")
+    except Exception as e:
+        print(f"Error occurred: {e}")
+    finally:
+        c.close()
+        print("Kafka consumer closed.")
