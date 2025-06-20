@@ -4,6 +4,8 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
+from pydantic_core.core_schema import json_schema
+
 
 class Ball(BaseModel):
     start: List[int]
@@ -16,14 +18,18 @@ class Collision(BaseModel):
     ball2: int
     time: float
 
-class EventRequest(BaseModel):
+class EventCreateRequest(BaseModel):
     playerID: int
     gameSetID: int
     scoreValue: bool
     isFoul: bool
     isUncertain: bool
     message: str
+
+class EventRequest(EventCreateRequest):
     sceneUrl: str
+
+
 
 class LogMessageCreateRequest(BaseModel):
     level: str
@@ -32,7 +38,27 @@ class LogMessageCreateRequest(BaseModel):
     balls: List[Ball]
     collisions: List[Collision]
     message: str
-    details: Optional[EventRequest] = None
+    details: Optional[EventCreateRequest] = None
+
+    #convert create req to req
+    def to_message_request(self, scene_url: str) -> "LogMessageRequest":
+        # convert details nếu có
+        event_details = None
+        if self.details:
+            event_details = EventRequest(
+                **self.details.model_dump(),
+                sceneUrl=scene_url
+            )
+
+        return LogMessageRequest(
+            level=self.level,
+            type=self.type,
+            cueBallId=self.cueBallId,
+            balls=self.balls,
+            collisions=self.collisions,
+            message=self.message,
+            details=event_details
+        )
 
 class LogMessageRequest(BaseModel):
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
@@ -45,4 +71,6 @@ class LogMessageRequest(BaseModel):
     collisions: List[Collision]
     message: str
     details: Optional[EventRequest] = None
+
+
 
