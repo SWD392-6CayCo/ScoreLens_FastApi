@@ -1,8 +1,8 @@
-from pydantic import ValidationError
+from pydantic import ValidationError, AnyUrl
 from sqlalchemy.orm import Session
 from ScoreLens_FastApi.app.model.kafka_model import KafkaMessage, Ball, Collision
 from ScoreLens_FastApi.app.request.kafka_request import LogMessageRequest, EventRequest, LogMessageCreateRequest
-from typing import List
+from typing import List, Any
 from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse, BallResponse, CollisionResponse
 from ScoreLens_FastApi.app.exception.app_exception import AppException
 from ScoreLens_FastApi.app.exception.app_exception import ErrorCode
@@ -170,8 +170,9 @@ def get_kafka_messages_by_game_set_id(db: Session, game_set_id: int):
 def  delete_kafka_message(db: Session, message_id: int):
     try:
         message = get_kafka_message_by_id(db, message_id)
-        if message.scene_url:
-            delete_scene_url(message.scene_url)
+        tmp: Any = message.scene_url
+        if tmp:
+            delete_scene_url(tmp)
         db.delete(message)
         db.commit()
         logger.info(f"Deleted Kafka message with ID {message_id}")
@@ -189,8 +190,9 @@ def delete_kafka_message_by_game_set(db: Session, game_set_id: int):
     try:
         msg_list = get_kafka_messages_by_game_set_id(db, game_set_id)
         for msg in msg_list:
-            if msg.scene_url:
-                delete_scene_url(msg.scene_url)
+            tmp: Any = msg.scene_url
+            if tmp:
+                delete_scene_url(tmp)
             db.delete(msg)
         db.commit()
         logger.info(f"Deleted {len(msg_list)} Kafka messages for game_set_id {game_set_id}.")
@@ -208,8 +210,9 @@ def delete_kafka_message_by_player(db: Session, player_id: int):
     try:
         msg_list = get_kafka_messages_by_player_id(db, player_id)
         for msg in msg_list:
-            if msg.scene_url:
-                delete_scene_url(msg.scene_url)
+            tmp: Any = msg.scene_url
+            if tmp:
+                delete_scene_url(tmp)
             db.delete(msg)
         db.commit()
         logger.info(f"Deleted {len(msg_list)} Kafka messages for player_id {player_id}.")
@@ -271,7 +274,7 @@ def convert_create_to_msg(req: LogMessageCreateRequest) -> LogMessageRequest:
         )
 
 #delete image on s3
-def delete_scene_url(scene_url: str):
+def delete_scene_url(scene_url: str) -> None:
     string = extract_s3_key_from_url(scene_url)
     delete_file_from_s3(string)
 
