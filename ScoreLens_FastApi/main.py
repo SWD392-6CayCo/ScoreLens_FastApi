@@ -1,9 +1,15 @@
 import logging
+import json
 from contextlib import asynccontextmanager
 from threading import Thread
 
 from fastapi import FastAPI
-from ScoreLens_FastApi.app.api.v1 import kafka_router, s3_router, kafka_message_router
+from pydantic import ValidationError
+
+from ScoreLens_FastApi.app.api.v1 import s3_router, kafka_message_router
+from ScoreLens_FastApi.app.exception.app_exception import AppException
+from ScoreLens_FastApi.app.exception.global_exception_handler import app_exception_handler, \
+    validation_exception_handler, json_exception_handler
 from ScoreLens_FastApi.app.service.kafka_consumer_service import consume_messages
 
 ############################################# Cấu hình logging #######################################################
@@ -26,12 +32,17 @@ async def lifespan(app: FastAPI):
 
 #################################################### FastApi ########################################################
 app = FastAPI(title="FastApi",version="1.0.0", lifespan=lifespan)
+
+# Exception Handlers
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(ValidationError, validation_exception_handler)
+app.add_exception_handler(json.JSONDecodeError, json_exception_handler)
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 # Include routers
-app.include_router(kafka_router.router)
 app.include_router(s3_router.router)
 app.include_router(kafka_message_router.router)
 

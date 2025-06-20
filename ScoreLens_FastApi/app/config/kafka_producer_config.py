@@ -23,16 +23,6 @@ def producer():
         value_serializer=lambda v: v.encode("utf-8"),
     )
 
-def send_json_message(msg: EventRequest):
-    p = producer()
-    p.send("ai-noti", value=msg.model_dump_json())
-    p.flush()
-
-def send_json_logging(msg: LogMessageRequest):
-    p = producer()
-    p.send(TOPIC_PRODUCER, value=msg.model_dump_json(), partition=0)
-    p.flush()
-
 
 # đảm bảo các message còn nằm trong buffer của producer được gửi hết về Kafka broker ngay lập tức.
 def flush_producer():
