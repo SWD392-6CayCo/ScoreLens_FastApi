@@ -5,8 +5,6 @@ from dotenv import load_dotenv
 from kafka import KafkaProducer
 
 
-from ScoreLens_FastApi.app.request.kafka_request import EventRequest, LogMessageRequest
-
 load_dotenv()
 
 TOPIC_PRODUCER = os.getenv("KAFKA_TOPIC_PRODUCER")

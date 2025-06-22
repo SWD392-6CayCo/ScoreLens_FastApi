@@ -2,9 +2,11 @@ from datetime import datetime
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from pydantic_core.core_schema import json_schema
+
+from ScoreLens_FastApi.app.enum.kafka_code import KafkaCode
 
 
 class Ball(BaseModel):
@@ -71,6 +73,13 @@ class LogMessageRequest(BaseModel):
     collisions: List[Collision]
     message: str
     details: Optional[EventRequest] = None
+
+class ProducerRequest(BaseModel):
+    code: KafkaCode
+    data: Any
+
+    class Config:
+        use_enum_values = True
 
 
 
