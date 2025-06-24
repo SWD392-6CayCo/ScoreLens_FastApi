@@ -1,7 +1,9 @@
+from fastapi import HTTPException
 from pydantic import ValidationError, AnyUrl
 from sqlalchemy.orm import Session
 from ScoreLens_FastApi.app.model.kafka_model import KafkaMessage, Ball, Collision
-from ScoreLens_FastApi.app.request.kafka_request import LogMessageRequest, EventRequest, LogMessageCreateRequest
+from ScoreLens_FastApi.app.request.kafka_request import LogMessageRequest, EventRequest, LogMessageCreateRequest, \
+    ProducerRequest
 from typing import List, Any
 from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse, BallResponse, CollisionResponse
 from ScoreLens_FastApi.app.exception.app_exception import AppException
@@ -225,32 +227,51 @@ def delete_kafka_message_by_player(db: Session, player_id: int):
             message=f"Failed to delete Kafka messages for player_id {player_id}: {e}"
         )
 
-# parse JSON string sang Pydantic model
-def parse_json(string_req: str) -> LogMessageCreateRequest:
+
+def parse_json_to_producer_request(json_string: str) -> ProducerRequest:
     try:
-        log_data = json.loads(string_req)
-        return LogMessageCreateRequest.model_validate(log_data)
-    except json.JSONDecodeError as e:
-        logger.exception(f"JSON decode error: {e}")
-        raise AppException(
-            status_code=400,
-            code=ErrorCode.JSON_DECODE_ERROR,
-            message=f"Invalid JSON format: {e}"
-        )
+        return ProducerRequest.model_validate_json(json_string)
     except ValidationError as e:
-        logger.exception(f"Validation error while parsing log_request: {e}")
+        logger.exception("Validation error while parsing log_request")
         raise AppException(
             status_code=400,
             code=ErrorCode.VALIDATION_ERROR,
             message=f"Invalid log_request schema: {e}"
         )
     except Exception as e:
-        logger.exception(f"Unexpected error while parsing log_request: {e}")
+        logger.exception("Unexpected error while parsing log_request")
         raise AppException(
             status_code=500,
             code=ErrorCode.UNKNOWN_ERROR,
-            message=f"Unexpected error while parsing log_request: {e}"
+            message=f"Unexpected error while parsing log_request: {str(e)}"
         )
+
+
+
+def convert_producer_request_to_log_message_create_request(producer_request: ProducerRequest) -> LogMessageCreateRequest:
+    """
+    Chuyển đổi dữ liệu từ ProducerRequest thành LogMessageCreateRequest.
+    """
+    if not isinstance(producer_request.data, dict):
+        raise AppException(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            message="ProducerRequest.data must be a JSON object (dict)"
+        )
+
+    try:
+        log_message_req = LogMessageCreateRequest.model_validate(producer_request.data)
+        return log_message_req
+
+    except ValidationError as e:
+        logger.exception("Validation error when converting data to LogMessageCreateRequest")
+        raise AppException(
+            status_code=400,
+            code=ErrorCode.VALIDATION_ERROR,
+            message=f"Invalid log_request data schema: {e}"
+        )
+
+    
 
 
 # convert from create to msg
@@ -313,15 +334,5 @@ def convert_kafka_message_to_response(kafka_message: KafkaMessage) -> KafkaMessa
 def convert_kafka_messages_to_responses(kafka_messages: List[KafkaMessage]) -> List[KafkaMessageResponse]:
     return [convert_kafka_message_to_response(message) for message in kafka_messages]
 
-def convert_kafka_message_to_event_request(message: KafkaMessage) -> EventRequest:
-    return EventRequest(
-        playerID=message.player_id,
-        gameSetID=message.game_set_id,
-        scoreValue=message.score_value,
-        isFoul=message.is_foul,
-        isUncertain=message.is_uncertain,
-        message=message.message,
-        sceneUrl=message.scene_url
-    )
 
 

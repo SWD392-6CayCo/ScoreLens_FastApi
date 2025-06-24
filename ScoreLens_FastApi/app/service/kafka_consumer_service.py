@@ -8,12 +8,11 @@ import logging
 import json
 
 from ScoreLens_FastApi.app.request.kafka_request import ProducerRequest
-from ScoreLens_FastApi.app.service.kafka_producer_service import send_heart_beat
+from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
 
 logger = logging.getLogger(__name__)
 
 
-# listen topic "ai-noti" with partition 0
 def consume_partition(partition=0):
     c = consumer()
     tp = TopicPartition(TOPIC_CONSUMER, partition)
@@ -101,7 +100,7 @@ def process_message(message):
 def handle_code_value(code_value):
     match KafkaCode(code_value):
         case KafkaCode.RUNNING:
-            send_heart_beat(ProducerRequest(code=KafkaCode.RUNNING, data="Send heart beat to spring boot"))
+            send_to_java(ProducerRequest(code=KafkaCode.RUNNING, data="Send heart beat to spring boot"))
 
         case _:
             print(f"No action defined for: {code_value}")

@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List
 from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy session
+from ScoreLens_FastApi.app.request.kafka_request import ProducerRequest
 from ScoreLens_FastApi.app.service import message_service
 from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse  # nếu cần response schema
-from ScoreLens_FastApi.app.service.kafka_producer_service import send_json_logging
+from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
 from ScoreLens_FastApi.app.service.message_service import convert_kafka_message_to_response, \
-    convert_kafka_messages_to_responses, parse_json, convert_create_to_msg
+    convert_kafka_messages_to_responses, convert_create_to_msg, parse_json_to_producer_request, \
+    convert_producer_request_to_log_message_create_request
 from ScoreLens_FastApi.app.service.s3_service import upload_file_to_s3_with_prefix
 import logging
 
@@ -28,8 +30,9 @@ def create_message(
         file: UploadFile = File(...),
         db: Session = Depends(get_db)
 ):
-    # parse JSON string sang Pydantic model
-    log_message = parse_json(log_request)
+    # parse json string to Pydantic ProducerRequest and parse PR data to LogMsgReq
+    tmp = parse_json_to_producer_request(log_request)
+    log_message = convert_producer_request_to_log_message_create_request(tmp)
 
     # convert from create to msg, để trống scene_url
     message_request = convert_create_to_msg(log_message)
@@ -44,9 +47,10 @@ def create_message(
     message = message_service.create_kafka_message(db, message_request)
 
     # kafka send msg
-    send_json_logging(message_request)
+    send_to_java(tmp)
 
     return convert_kafka_message_to_response(message)
+
 
 
 # Lấy danh sách messages
