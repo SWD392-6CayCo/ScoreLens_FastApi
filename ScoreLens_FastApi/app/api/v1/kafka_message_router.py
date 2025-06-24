@@ -46,6 +46,9 @@ def create_message(
     # save into db
     message = message_service.create_kafka_message(db, message_request)
 
+    #add url to tmp
+    tmp.data = message_request
+
     # kafka send msg
     send_to_java(tmp)
 
