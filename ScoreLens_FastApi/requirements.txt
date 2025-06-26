@@ -1,17 +1,33 @@
+# FastAPI & server
 fastapi
 uvicorn[standard]
 python-multipart
+
+# Kafka
 confluent-kafka
 kafka-python
+
+# Env config
 python-dotenv
 
-#asw s3
+# AWS S3
 boto3
 
-#postgres
-sqlalchemy  #ORM giống hybernate
-psycopg2-binary #postgre driver
-alembic #quản lý migrate DB schema
+# Postgres & ORM
+sqlalchemy
+psycopg2-binary
+alembic
+
+# AI Detection & RTSP streaming
+ultralytics             # YOLOv8 (cài kèm torch tương thích)
+opencv-python           # OpenCV, hỗ trợ đọc video stream
+opencv-python-headless  # Nếu chạy trên server/headless
+numpy                   # Xử lý toạ độ và data AI
+
+# Optionally nếu dùng YOLOv5
+# torch
+# torchvision
+
 
 
 #alembic init alembic

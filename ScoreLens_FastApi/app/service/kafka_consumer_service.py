@@ -3,12 +3,15 @@ from ScoreLens_FastApi.app.config.kafka_consumer_config import consumer, TOPIC_C
 from ScoreLens_FastApi.app.enum import kafka_code
 from ScoreLens_FastApi.app.exception.app_exception import AppException, ErrorCode
 from ScoreLens_FastApi.app.enum.kafka_code import KafkaCode
+from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy session
+
 
 import logging
 import json
 
 from ScoreLens_FastApi.app.request.kafka_request import ProducerRequest
 from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
+from ScoreLens_FastApi.app.service.message_service import delete_kafka_message_by_player
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +88,8 @@ def process_message(message):
             return
 
         code_value = event.get("code")
-        handle_code_value(code_value)
+
+        handle_code_value(event)
 
     except Exception as e:
         logger.error(f"Failed to process message at offset {message.offset}: {e}")
@@ -97,10 +101,17 @@ def process_message(message):
 
 
 # xử lí enum kafka_code
-def handle_code_value(code_value):
+def handle_code_value(e):
+    code_value = e.get("code")
     match KafkaCode(code_value):
         case KafkaCode.RUNNING:
             send_to_java(ProducerRequest(code=KafkaCode.RUNNING, data="Send heart beat to spring boot"))
+
+        case KafkaCode.DELETE_PLAYER:
+            player_id = e.get("data")
+            with next(get_db()) as db:
+                count = delete_kafka_message_by_player(db, player_id)
+                send_to_java(ProducerRequest(code=KafkaCode.DELETE_CONFIRM, data=count))
 
         case _:
             print(f"No action defined for: {code_value}")
