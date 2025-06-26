@@ -58,6 +58,7 @@ alembic/versions/*.pyc
 
 # Environments
 ../.env
+.env
 .env.*
 
 # Certificates / sensitive cert keys
@@ -76,7 +77,7 @@ Thumbs.db
 # Log files
 *.log
 
-# Database local files (if any)
+# Database local files
 *.sqlite3
 *.db
 
@@ -88,5 +89,23 @@ Thumbs.db
 *.swp
 *~
 
-# Render specific or deployment configs (optional)
+# Render specific or deployment configs
 render.yaml
+
+# YOLOv5 models and runs
+*.pt
+runs/
+third_party/yolov5/
+
+# Video, media files
+*.mp4
+*.avi
+*.mov
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Kafka logs (if using local Kafka docker)
+kafka-logs/
+zookeeper-logs/

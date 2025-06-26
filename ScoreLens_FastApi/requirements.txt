@@ -25,7 +25,7 @@ opencv-python              # OpenCV, hỗ trợ đọc video stream
 opencv-python-headless     # Nếu chạy trên server/headless
 numpy                      # Xử lý toạ độ và data AI
 
-#-e ./third_party/yolov5
+-e ./third_party/yolov5
 
 
 
