@@ -113,3 +113,10 @@ zookeeper-logs/
 # YOLO model weights (custom AI models)
 ai/*.pt
 
+# Ignore yolov5 cache
+third_party/yolov5/runs/
+third_party/yolov5/.git/
+third_party/yolov5/.venv/
+third_party/yolov5/weights/
+
+
