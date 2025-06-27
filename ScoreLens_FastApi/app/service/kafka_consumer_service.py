@@ -15,7 +15,7 @@ import json
 
 from ScoreLens_FastApi.app.state_manager_class.match_state import MatchState
 from ScoreLens_FastApi.app.state_manager_class.detect_state import DetectState
-from ScoreLens_FastApi.app.request.kafka_request import ProducerRequest
+from ScoreLens_FastApi.app.request.message_request import ProducerRequest
 from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
 from ScoreLens_FastApi.app.service.message_service import delete_kafka_message_by_player, delete_kafka_message_by_game_set
 

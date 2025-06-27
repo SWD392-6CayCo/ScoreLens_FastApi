@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 from ScoreLens_FastApi.app.config.db import Base
-from ScoreLens_FastApi.app.model import kafka_model
+from ScoreLens_FastApi.app.model import message
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

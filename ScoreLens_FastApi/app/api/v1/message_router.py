@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List
 from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy session
-from ScoreLens_FastApi.app.request.kafka_request import ProducerRequest
+from ScoreLens_FastApi.app.request.message_request import ProducerRequest
 from ScoreLens_FastApi.app.service import message_service
-from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse  # nếu cần response schema
+from ScoreLens_FastApi.app.response.message_response import KafkaMessageResponse  # nếu cần response schema
 from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
 from ScoreLens_FastApi.app.service.message_service import convert_kafka_message_to_response, \
     convert_kafka_messages_to_responses, convert_create_to_msg, parse_json_to_producer_request, \

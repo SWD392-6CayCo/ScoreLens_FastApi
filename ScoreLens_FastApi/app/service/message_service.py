@@ -1,11 +1,11 @@
 from fastapi import HTTPException
 from pydantic import ValidationError, AnyUrl
 from sqlalchemy.orm import Session
-from ScoreLens_FastApi.app.model.kafka_model import KafkaMessage, Ball, Collision
-from ScoreLens_FastApi.app.request.kafka_request import LogMessageRequest, EventRequest, LogMessageCreateRequest, \
+from ScoreLens_FastApi.app.model.message import KafkaMessage, Ball, Collision
+from ScoreLens_FastApi.app.request.message_request import LogMessageRequest, EventRequest, LogMessageCreateRequest, \
     ProducerRequest
 from typing import List, Any
-from ScoreLens_FastApi.app.response.kafka_message_response import KafkaMessageResponse, BallResponse, CollisionResponse
+from ScoreLens_FastApi.app.response.message_response import KafkaMessageResponse, BallResponse, CollisionResponse
 from ScoreLens_FastApi.app.exception.app_exception import AppException
 from ScoreLens_FastApi.app.exception.app_exception import ErrorCode
 from ScoreLens_FastApi.app.service.s3_service import extract_s3_key_from_url, delete_file_from_s3

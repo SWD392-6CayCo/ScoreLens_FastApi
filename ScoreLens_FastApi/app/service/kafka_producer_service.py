@@ -1,6 +1,6 @@
 from ScoreLens_FastApi.app.exception.app_exception import AppException
 from ScoreLens_FastApi.app.exception.error_code import ErrorCode
-from ScoreLens_FastApi.app.request.kafka_request import LogMessageRequest, ProducerRequest
+from ScoreLens_FastApi.app.request.message_request import LogMessageRequest, ProducerRequest
 from ScoreLens_FastApi.app.config.kafka_producer_config import producer, TOPIC_PRODUCER
 
 import logging

@@ -6,7 +6,7 @@ from threading import Thread
 from fastapi import FastAPI
 from pydantic import ValidationError
 
-from ScoreLens_FastApi.app.api.v1 import s3_router, kafka_message_router, detect_router
+from ScoreLens_FastApi.app.api.v1 import s3_router, message_router, detect_router
 from ScoreLens_FastApi.app.exception.app_exception import AppException
 from ScoreLens_FastApi.app.exception.global_exception_handler import app_exception_handler, \
     validation_exception_handler, json_exception_handler
