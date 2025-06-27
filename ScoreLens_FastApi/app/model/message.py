@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 from ScoreLens_FastApi.app.config.db import Base
 
 class KafkaMessage(Base):
-    __tablename__ = "kafka_message"
+    __tablename__ = "message"
 
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime, default=datetime.now())
@@ -18,8 +18,8 @@ class KafkaMessage(Base):
     player_id = Column(Integer)
     game_set_id = Column(Integer)
 
-    balls = relationship("Ball", back_populates="kafka_message", cascade="all, delete-orphan")
-    collisions = relationship("Collision", back_populates="kafka_message", cascade="all, delete-orphan")
+    balls = relationship("Ball", back_populates="message", cascade="all, delete-orphan")
+    collisions = relationship("Collision", back_populates="message", cascade="all, delete-orphan")
 
 
 class Ball(Base):
@@ -31,7 +31,7 @@ class Ball(Base):
     end_x = Column(Integer)
     end_y = Column(Integer)
     potted = Column(Boolean)
-    kafka_message_id = Column(Integer, ForeignKey("kafka_message.id"))
+    kafka_message_id = Column(Integer, ForeignKey("message.id"))
 
     kafka_message = relationship("KafkaMessage", back_populates="balls")
 
@@ -43,6 +43,6 @@ class Collision(Base):
     ball1 = Column(Integer)
     ball2 = Column(Integer)
     time = Column(Float)
-    kafka_message_id = Column(Integer, ForeignKey("kafka_message.id"))
+    kafka_message_id = Column(Integer, ForeignKey("message.id"))
 
     kafka_message = relationship("KafkaMessage", back_populates="collisions")
