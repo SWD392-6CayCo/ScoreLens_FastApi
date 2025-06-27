@@ -56,7 +56,7 @@ class ScoreAnalyzer:
         return result
 
     @staticmethod
-    def check_foul_rule9(self, cue_ball_id, target_ball, collisions, balls_info, cushions):
+    def check_foul_rule9(cue_ball_id, target_ball, collisions, balls_info, cushions):
         if not collisions:
             return True, "No collision detected"
 
