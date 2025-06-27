@@ -26,7 +26,7 @@ opencv-python-headless     # Nếu chạy trên server/headless
 numpy                      # Xử lý toạ độ và data AI
 pandas
 ultralytics
-utils
+
 
 
 #-e ./third_party/yolov5

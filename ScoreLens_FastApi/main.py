@@ -48,6 +48,15 @@ app.include_router(kafka_message_router.router)
 app.include_router(detect_router.router)
 
 
+# from app.ai.detect_rtsp_yolov8 import DetectService
+#
+# if __name__ == "__main__":
+#     rtsp_url = "rtsp://localhost:8554/mystream"
+#     detect_service = DetectService(rtsp_url, model_path="app/ai/best.pt")
+#     detect_service.start()
+
+
+
 
 
 
