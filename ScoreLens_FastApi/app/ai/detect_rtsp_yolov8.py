@@ -12,6 +12,8 @@ from .score_analyzer import ScoreAnalyzer
 # Constants
 COLLISION_DISTANCE_THRESHOLD = 30
 POSITION_CHANGE_THRESHOLD = 3
+CUSHION_MARGIN = 10  # pixels gần mép bàn tính là chạm băng
+
 
 # Logger setup
 logging.basicConfig(level=logging.INFO)
@@ -70,13 +72,19 @@ class DetectService:
 
             result_frame, balls_info = self.detect_frame(frame, start_time)
 
+
+            #trả về json
             if self.is_shot_finished():
+                cushions = any(ball["cushion_hit"] for ball in balls_info)
+
                 result_json = self.analyzer.analyze_shot(
                     self.cue_ball_id,
                     balls_info,
                     self.collisions,
                     player_id=6,
-                    game_set_id=82
+                    game_set_id=82,
+                    cushions=cushions
+
                 )
                 frame_path = self.analyzer.save_frame(frame)
 
@@ -96,10 +104,18 @@ class DetectService:
                 self.stop()
                 break
 
+    @staticmethod
+    def check_cushion_hit(self, position, frame_shape):
+        cx, cy = position
+        width, height = frame_shape[1], frame_shape[0]
+        return (
+                cx <= CUSHION_MARGIN or cy <= CUSHION_MARGIN or
+                cx >= width - CUSHION_MARGIN or cy >= height - CUSHION_MARGIN
+        )
+
     def detect_frame(self, frame, start_time):
         results = self.model.predict(source=frame, conf=self.conf_thres, device=self.device, verbose=False)
         balls_info = []
-
         current_positions = {}
 
         for r in results:
@@ -116,13 +132,14 @@ class DetectService:
                 prev_pos = self.ball_positions.get(cls)
 
                 potted = cx < 0 or cy < 0 or cx > frame.shape[1] or cy > frame.shape[0]
+                cushion_hit = self.check_cushion_hit((cx, cy), frame.shape)
 
                 for other_id, other_pos in self.ball_positions.items():
                     if other_id == cls:
                         continue
                     dist = np.linalg.norm(np.array([cx, cy]) - np.array(other_pos))
                     if dist < COLLISION_DISTANCE_THRESHOLD and not any(
-                        c for c in self.collisions if c["ball1"] == cls and c["ball2"] == other_id):
+                            c for c in self.collisions if c["ball1"] == cls and c["ball2"] == other_id):
                         self.collisions.append({
                             "ball1": cls,
                             "ball2": other_id,
@@ -135,7 +152,8 @@ class DetectService:
                     "id": cls,
                     "start": prev_pos if prev_pos else [cx, cy],
                     "end": [cx, cy],
-                    "potted": potted
+                    "potted": potted,
+                    "cushion_hit": cushion_hit
                 })
 
         self.prev_positions = self.ball_positions.copy()

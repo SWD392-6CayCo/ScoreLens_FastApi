@@ -9,19 +9,30 @@ class ScoreAnalyzer:
         self.save_dir.mkdir(parents=True, exist_ok=True)
 
     def analyze_shot(self, cue_ball_id, balls_info, collisions, cushions, player_id, game_set_id):
-        balls_remaining = [b for b in balls_info if not b["potted"]]
-        target_ball = min([i for i in range(1, 10) if i in [balls_info.index(b) for b in balls_remaining]], default=None)
+        # Lấy danh sách các ball id còn trên bàn (chưa potted)
+        balls_remaining = [b["id"] for b in balls_info if not b["potted"]]
 
+        # Tìm target ball nhỏ nhất theo luật 9-ball (bi thấp nhất còn lại)
+        target_ball = min([i for i in range(1, 10) if i in balls_remaining], default=None)
+
+        # Có bi nào lọt lỗ không
         score_value = any(b["potted"] for b in balls_info)
-        is_foul, foul_message = self.check_foul_rule9(cue_ball_id, target_ball, collisions, balls_info, cushions)
 
-        # Kiểm tra nếu potted ball 9
-        potted_9 = any((balls_info.index(b) == 9 and b["potted"]) for b in balls_info)
+        # Kiểm tra foul theo luật
+        is_foul, foul_message = self.check_foul_rule9(
+            cue_ball_id, target_ball, collisions, balls_info, cushions
+        )
 
-        message = f"Player {player_id} {'potted a ball' if score_value else 'missed'}"
+        # Kiểm tra bi 9 có lọt lỗ không
+        potted_9 = any((b["id"] == 9 and b["potted"]) for b in balls_info)
+
+        # Message kết quả
         if potted_9:
             message = f"Player {player_id} wins the set by potting ball 9!"
+        else:
+            message = f"Player {player_id} {'potted a ball' if score_value else 'missed'}"
 
+        # Kết quả JSON trả về
         result = {
             "code": "LOGGING",
             "data": {
@@ -36,12 +47,12 @@ class ScoreAnalyzer:
                     "gameSetID": game_set_id,
                     "scoreValue": score_value,
                     "isFoul": is_foul,
-                    "potted9": potted_9,
                     "isUncertain": False,
                     "message": foul_message
                 }
             }
         }
+
         return result
 
     @staticmethod
