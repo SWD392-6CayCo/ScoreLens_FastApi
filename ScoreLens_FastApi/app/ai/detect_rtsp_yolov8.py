@@ -59,16 +59,16 @@ class DetectService:
         self.state = GameState.BREAKING
 
     def start(self):
-        logger.info("🚀 DetectService (YOLOv8) starting...")
+        logger.info("DetectService (YOLOv8) starting...")
         self.running = True
         self.cap = cv2.VideoCapture(self.rtsp_url)
         if not self.cap.isOpened():
-            logger.error("❌ Cannot open video stream.")
+            logger.error("Cannot open video stream.")
             return
         Thread(target=self._run, daemon=True).start()
 
     def stop(self):
-        logger.info("🛑 Stopping DetectService...")
+        logger.info("Stopping DetectService...")
         self.running = False
         if self.cap:
             self.cap.release()
@@ -81,7 +81,7 @@ class DetectService:
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
-                logger.warning("⚠️ Lost video stream connection.")
+                logger.warning("Lost video stream connection.")
                 break
 
             result_frame, balls_info, cushions = self.detect_frame(frame, start_time)
@@ -92,7 +92,7 @@ class DetectService:
 
             if self.state == GameState.BREAKING:
                 if self.is_shot_finished():
-                    logger.info("📌 Break shot finished. Switching to PLAYING state.")
+                    logger.info("Break shot finished. Switching to PLAYING state.")
                     self._reset_tracking()
                     self.state = GameState.PLAYING
                     start_time = time.time()
@@ -113,8 +113,8 @@ class DetectService:
                     )
                     frame_path = self.analyzer.save_frame(frame)
 
-                    logger.info("🎱 Shot result:\n%s", result_json)
-                    logger.info(f"🖼 Frame saved at: {frame_path}")
+                    logger.info("Shot result:\n%s", result_json)
+                    logger.info(f"Frame saved at: {frame_path}")
 
                     # Kiểm tra số bi ăn được
                     if potted_count == 0:

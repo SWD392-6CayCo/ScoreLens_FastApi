@@ -137,7 +137,7 @@ def handle_code_value(event):
                     print(camera_url)
                 else:
                     camera_url = "none"
-                    print("❌ No camera URL found")
+                    print("No camera URL found")
                 #bắt đầu stream
                 DetectState.start_detection(camera_url)
                 print("Received match info:", data["data"])
@@ -146,7 +146,7 @@ def handle_code_value(event):
                     for player in team["players"]:
                         print(f"  Player {player['playerID']} - {player['name']}")
             except Exception as e:
-                print("❌ Error processing message:", e)
+                print("Error processing message:", e)
 
         case KafkaCode.STOP_STREAM:
             MatchState.clear_match_info()  # dùng hàm clear trong MatchState
