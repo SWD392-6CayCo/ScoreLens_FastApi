@@ -1,4 +1,8 @@
+from typing import Optional
+
 from kafka import TopicPartition
+
+from ScoreLens_FastApi.app.ai.detect_rtsp_yolov8 import DetectService
 from ScoreLens_FastApi.app.config.kafka_consumer_config import consumer, TOPIC_CONSUMER
 from ScoreLens_FastApi.app.enum import kafka_code
 from ScoreLens_FastApi.app.exception.app_exception import AppException, ErrorCode
@@ -9,27 +13,15 @@ from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy 
 import logging
 import json
 
+from ScoreLens_FastApi.app.state_manager_class.match_state import MatchState
+from ScoreLens_FastApi.app.state_manager_class.detect_state import DetectState
 from ScoreLens_FastApi.app.request.kafka_request import ProducerRequest
 from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
 from ScoreLens_FastApi.app.service.message_service import delete_kafka_message_by_player, delete_kafka_message_by_game_set
 
 logger = logging.getLogger(__name__)
 
-#lưu thông tin người chơi, dùng MatchState để gọi
-class MatchState:
-    current_match_info = None
 
-    @classmethod
-    def set_match_info(cls, info):
-        cls.current_match_info = info
-
-    @classmethod
-    def clear_match_info(cls):
-        cls.current_match_info = None
-
-    @classmethod
-    def get_match_info(cls):
-        return cls.current_match_info
 
 
 
@@ -136,8 +128,18 @@ def handle_code_value(event):
                 send_to_java(ProducerRequest(code=KafkaCode.DELETE_CONFIRM, data=count))
 
         case KafkaCode.START_STREAM:
-            MatchState.set_match_info(data)
             try:
+                #lưu thông tin người chơi
+                MatchState.set_match_info(data)
+                #lấy url camera
+                if data and "cameraUrl" in data["data"]:
+                    camera_url = data["data"]["cameraUrl"]
+                    print(camera_url)
+                else:
+                    camera_url = "none"
+                    print("❌ No camera URL found")
+                #bắt đầu stream
+                DetectState.start_detection(camera_url)
                 print("Received match info:", data["data"])
                 for team in data["data"]["teams"]:
                     print(f"Team {team['teamID']}:")
@@ -148,6 +150,7 @@ def handle_code_value(event):
 
         case KafkaCode.STOP_STREAM:
             MatchState.clear_match_info()  # dùng hàm clear trong MatchState
+            DetectState.stop_detection()
             print("Match info cleared.")
 
         case _:

@@ -10,6 +10,7 @@ from threading import Thread
 from ultralytics import YOLO
 from enum import Enum
 from .score_analyzer import ScoreAnalyzer
+from ScoreLens_FastApi.app.state_manager_class.match_state import MatchState
 
 # Constants
 COLLISION_DISTANCE_THRESHOLD = 30
@@ -22,6 +23,7 @@ STABLE_THRESHOLD = 2  # pixel dịch chuyển nhỏ hơn này coi là đứng y�
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+#khi phá bi thì k detect gì
 class GameState(Enum):
     BREAKING = 0
     PLAYING = 1
@@ -96,22 +98,34 @@ class DetectService:
                     start_time = time.time()
 
             elif self.state == GameState.PLAYING:
-                potted_count = sum(1 for ball in balls_info if ball["potted"])
                 shot_finished = self.is_shot_finished()
 
                 if shot_finished:
+                    potted_count = sum(1 for ball in balls_info if ball["potted"])
+
                     result_json = self.analyzer.analyze_shot(
                         cue_ball_id=self.cue_ball_id,
                         balls_info=balls_info,
                         collisions=self.collisions,
                         cushions=cushions,
-                        player_id=6,
-                        game_set_id=82
+                        player_id=MatchState.get_current_player_id(),
+                        game_set_id=MatchState.get_game_set_id()
                     )
                     frame_path = self.analyzer.save_frame(frame)
 
                     logger.info("🎱 Shot result:\n%s", result_json)
                     logger.info(f"🖼 Frame saved at: {frame_path}")
+
+                    if potted_count == 0:
+                        # Nếu không ghi điểm → đổi team
+                        MatchState.next_turn()
+                    else:
+                        # Nếu muốn đánh tiếp, và team có nhiều player thì chuyển player tiếp theo
+                        team = MatchState.current_match_info["teams"][MatchState.current_team_index]
+                        if MatchState.current_player_index + 1 < len(team["players"]):
+                            MatchState.current_player_index += 1
+                        else:
+                            MatchState.current_player_index = 0  # hết player thì về đầu (nếu muốn giữ team đó tiếp)
 
                     self._reset_tracking()
                     start_time = time.time()
