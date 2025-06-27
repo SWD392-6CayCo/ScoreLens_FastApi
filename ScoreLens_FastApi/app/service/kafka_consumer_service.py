@@ -130,7 +130,7 @@ def handle_code_value(event):
         case KafkaCode.START_STREAM:
             try:
                 #lưu thông tin người chơi
-                MatchState.set_match_info(data)
+                MatchState.set_match_info(data["data"])
                 #lấy url camera
                 if data and "cameraUrl" in data["data"]:
                     camera_url = data["data"]["cameraUrl"]

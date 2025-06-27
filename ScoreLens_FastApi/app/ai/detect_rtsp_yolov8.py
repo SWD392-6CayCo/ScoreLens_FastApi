@@ -116,16 +116,16 @@ class DetectService:
                     logger.info("🎱 Shot result:\n%s", result_json)
                     logger.info(f"🖼 Frame saved at: {frame_path}")
 
+                    # Kiểm tra số bi ăn được
                     if potted_count == 0:
-                        # Nếu không ghi điểm → đổi team
-                        MatchState.next_turn()
+                        # Nếu không ăn điểm → next turn với is_score = False
+                        player_id = MatchState.next_turn(is_score=False)
                     else:
-                        # Nếu muốn đánh tiếp, và team có nhiều player thì chuyển player tiếp theo
-                        team = MatchState.current_match_info["teams"][MatchState.current_team_index]
-                        if MatchState.current_player_index + 1 < len(team["players"]):
-                            MatchState.current_player_index += 1
-                        else:
-                            MatchState.current_player_index = 0  # hết player thì về đầu (nếu muốn giữ team đó tiếp)
+                        # Nếu ăn điểm → next turn với is_score = True
+                        player_id = MatchState.next_turn(is_score=True)
+
+                    # Log hoặc gửi thông báo ai sẽ đánh tiếp
+                    print(f"Next turn: Player {player_id}")
 
                     self._reset_tracking()
                     start_time = time.time()
