@@ -11,9 +11,26 @@ import json
 
 from ScoreLens_FastApi.app.request.kafka_request import ProducerRequest
 from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
-from ScoreLens_FastApi.app.service.message_service import delete_kafka_message_by_player
+from ScoreLens_FastApi.app.service.message_service import delete_kafka_message_by_player, delete_kafka_message_by_game_set
 
 logger = logging.getLogger(__name__)
+
+#lưu thông tin người chơi, dùng MatchState để gọi
+class MatchState:
+    current_match_info = None
+
+    @classmethod
+    def set_match_info(cls, info):
+        cls.current_match_info = info
+
+    @classmethod
+    def clear_match_info(cls):
+        cls.current_match_info = None
+
+    @classmethod
+    def get_match_info(cls):
+        return cls.current_match_info
+
 
 
 def consume_partition(partition=0):
@@ -87,8 +104,6 @@ def process_message(message):
             logger.warning(f"Message at offset {message.offset} missing or empty data.")
             return
 
-        code_value = event.get("code")
-
         handle_code_value(event)
 
     except Exception as e:
@@ -101,17 +116,39 @@ def process_message(message):
 
 
 # xử lí enum kafka_code
-def handle_code_value(e):
-    code_value = e.get("code")
+def handle_code_value(event):
+    code_value = event.get("code")
+    data = event
     match KafkaCode(code_value):
         case KafkaCode.RUNNING:
             send_to_java(ProducerRequest(code=KafkaCode.RUNNING, data="Send heart beat to spring boot"))
 
         case KafkaCode.DELETE_PLAYER:
-            player_id = e.get("data")
+            player_id = event.get("data")
             with next(get_db()) as db:
                 count = delete_kafka_message_by_player(db, player_id)
                 send_to_java(ProducerRequest(code=KafkaCode.DELETE_CONFIRM, data=count))
+
+        case KafkaCode.DELETE_GAME_SET:
+            game_set_id = event.get("data")
+            with next(get_db()) as db:
+                count = delete_kafka_message_by_game_set(db,game_set_id)
+                send_to_java(ProducerRequest(code=KafkaCode.DELETE_CONFIRM, data=count))
+
+        case KafkaCode.START_STREAM:
+            MatchState.set_match_info(data)
+            try:
+                print("Received match info:", data["data"])
+                for team in data["data"]["teams"]:
+                    print(f"Team {team['teamID']}:")
+                    for player in team["players"]:
+                        print(f"  Player {player['playerID']} - {player['name']}")
+            except Exception as e:
+                print("❌ Error processing message:", e)
+
+        case KafkaCode.STOP_STREAM:
+            MatchState.clear_match_info()  # dùng hàm clear trong MatchState
+            print("Match info cleared.")
 
         case _:
             print(f"No action defined for: {code_value}")
