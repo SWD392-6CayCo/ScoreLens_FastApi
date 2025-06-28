@@ -44,7 +44,7 @@ def health_check():
 
 # Include routers
 app.include_router(s3_router.router)
-app.include_router(kafka_message_router.router)
+app.include_router(message_router.router)
 app.include_router(detect_router.router)
 
 
