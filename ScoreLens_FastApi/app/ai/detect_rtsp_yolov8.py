@@ -44,6 +44,7 @@ class DetectService:
         if self.device == 'cuda':
             self.model.fuse()
             self.model.model.half()
+            self.model.model.to(self.device)
 
         logger.info(f"Class names loaded: {self.model.names}")
 
