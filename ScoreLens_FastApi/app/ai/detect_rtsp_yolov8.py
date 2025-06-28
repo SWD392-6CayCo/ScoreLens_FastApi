@@ -30,33 +30,38 @@ class GameState(Enum):
 
 class DetectService:
     def __init__(self, rtsp_url, model_path=None, conf_thres=0.5):
-
-
         self.ball_history = {}  # ball_id -> deque các vị trí
-
         self.rtsp_url = rtsp_url
         self.conf_thres = conf_thres
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+        # Kiểm tra GPU và gán device
+        if not torch.cuda.is_available():
+            logger.warning("⚠️ GPU không khả dụng, đang dùng CPU")
+            self.device = "cpu"
+        else:
+            logger.info(f"✅ GPU OK: {torch.cuda.get_device_name(0)}")
+            self.device = "cuda"
+
+        # Load model YOLO
         self.model_path = model_path or str(Path(__file__).parent / 'best.pt')
         self.model = YOLO(self.model_path)
 
+        # Nếu dùng GPU thì fuse + half + move model lên GPU
         if self.device == 'cuda':
             self.model.fuse()
-            self.model.model.half()
             self.model.model.to(self.device)
 
         logger.info(f"Class names loaded: {self.model.names}")
+        logger.info(f"Model loaded on: {next(self.model.model.parameters()).device}")
 
+        # Các thành phần còn lại
         self.cap = None
         self.running = False
-
         self.analyzer = ScoreAnalyzer(save_dir="logs")
         self.ball_positions = {}
         self.prev_positions = {}
         self.collisions = []
         self.cue_ball_id = 0
-
         self.state = GameState.BREAKING
 
     def start(self):
