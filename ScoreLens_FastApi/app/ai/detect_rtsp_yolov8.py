@@ -319,6 +319,15 @@ class DetectService:
         if self.device == 'cuda': self.model.fuse()
         logger.info(f"Model is running on device: {self.model.device}")
 
+        # # Nếu dùng GPU thì fuse + half + move model lên GPU
+        # if self.device == 'cuda':
+        #     self.model.fuse()
+        #     self.model.model.to(self.device)
+
+        logger.info(f"Class names loaded: {self.model.names}")
+        logger.info(f"Model loaded on: {next(self.model.model.parameters()).device}")
+
+        # Các thành phần còn lại
         self.cap = None
         self.running = False
         self.analyzer = ScoreAnalyzer(save_dir="logs")
