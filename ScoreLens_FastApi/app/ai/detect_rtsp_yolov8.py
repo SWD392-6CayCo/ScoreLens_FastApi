@@ -29,6 +29,9 @@ class ScoreAnalyzer:
 
 
 class MatchState:
+    def __init__(self):
+        pass
+
     _current_player_id = 1
 
     @staticmethod
@@ -322,7 +325,7 @@ class DetectService:
 
 # --- Phần chạy thử ---
 if __name__ == '__main__':
-    RTSP_URL = "rtsp://localhost:8554/mystream"
+    RTSP_URL = "https://scorelens.s3.ap-southeast-2.amazonaws.com/video/output.mp4"
     MODEL_PATH = "best.pt"
     service = DetectService(rtsp_url=RTSP_URL, model_path=MODEL_PATH)
     service.start()
