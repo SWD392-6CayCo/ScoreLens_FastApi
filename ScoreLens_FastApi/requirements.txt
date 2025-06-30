@@ -19,10 +19,13 @@ psycopg2-binary
 alembic
 
 # AI Detection & RTSP streaming (YOLOv5)
-torch==2.7.1+cu121
-torchaudio==2.2.1+cu121
-torchvision==0.18.1+cu121
---index-url https://download.pytorch.org/whl/cu121
+torch
+--index-url https://download.pytorch.org/whl/cu118
+torchvision
+--index-url https://download.pytorch.org/whl/cu118
+torchaudio
+--index-url https://download.pytorch.org/whl/cu118
+
 opencv-python              # OpenCV, hỗ trợ đọc video stream
 opencv-python-headless     # Nếu chạy trên server/headless
 numpy                      # Xử lý toạ độ và data AI
