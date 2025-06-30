@@ -110,7 +110,7 @@ def process_message(message):
 # xử lí enum kafka_code
 def handle_code_value(event):
     code_value = event.get("code")
-    data = event
+    data = event.get("data")
     match KafkaCode(code_value):
         case KafkaCode.RUNNING:
             send_to_java(ProducerRequest(code=KafkaCode.RUNNING, data="Send heart beat to spring boot"))
@@ -130,18 +130,26 @@ def handle_code_value(event):
         case KafkaCode.START_STREAM:
             try:
                 #lưu thông tin người chơi
-                MatchState.set_match_info(data["data"])
+                MatchState.set_match_info(data)
+
                 #lấy url camera
-                if data and "cameraUrl" in data["data"]:
-                    camera_url = data["data"]["cameraUrl"]
+                if data and "cameraUrl" in data:
+                    camera_url = data["cameraUrl"]
                     print(camera_url)
                 else:
                     camera_url = "none"
                     print("No camera URL found")
                 #bắt đầu stream
-                DetectState.start_detection(camera_url)
-                print("Received match info:", data["data"])
-                for team in data["data"]["teams"]:
+                # DetectState.start_detection(camera_url)
+
+                print("Received match info:", data)
+
+                # # log game sets
+                for game_set in data.get("sets", []):
+                    print(f"Game set ID: {game_set['gameSetID']}")
+
+                # log teams & players
+                for team in data["teams"]:
                     print(f"Team {team['teamID']}:")
                     for player in team["players"]:
                         print(f"  Player {player['playerID']} - {player['name']}")

@@ -8,7 +8,7 @@ class MatchState:
 
     @classmethod
     def set_match_info(cls, info):
-        cls.current_match_info = info["data"]
+        cls.current_match_info = info
         cls.game_set_ids = [s["gameSetID"] for s in cls.current_match_info.get("sets", [])]
         cls.current_game_set_index = 0
         cls.current_team_index = 0
