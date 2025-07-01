@@ -53,7 +53,7 @@ def create_kafka_message(db: Session, message_request: LogMessageRequest):
                 end_x=end_x,
                 end_y=end_y,
                 potted=ball_req.potted,
-                kafka_message_id=kafka_message.id
+                message_id=kafka_message.id
             )
             db.add(ball)
     except Exception as e:
@@ -70,7 +70,7 @@ def create_kafka_message(db: Session, message_request: LogMessageRequest):
                 ball1=collision_req.ball1,
                 ball2=collision_req.ball2,
                 time=collision_req.time,
-                kafka_message_id=kafka_message.id
+                message_id=kafka_message.id
             )
             db.add(collision)
     except Exception as e:

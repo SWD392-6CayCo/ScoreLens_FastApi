@@ -31,9 +31,9 @@ class Ball(Base):
     end_x = Column(Integer)
     end_y = Column(Integer)
     potted = Column(Boolean)
-    kafka_message_id = Column(Integer, ForeignKey("message.id"))
+    message_id = Column(Integer, ForeignKey("message.id"))
 
-    kafka_message = relationship("KafkaMessage", back_populates="balls")
+    message = relationship("KafkaMessage", back_populates="balls")
 
 
 class Collision(Base):
@@ -43,6 +43,6 @@ class Collision(Base):
     ball1 = Column(Integer)
     ball2 = Column(Integer)
     time = Column(Float)
-    kafka_message_id = Column(Integer, ForeignKey("message.id"))
+    message_id = Column(Integer, ForeignKey("message.id"))
 
-    kafka_message = relationship("KafkaMessage", back_populates="collisions")
+    message = relationship("KafkaMessage", back_populates="collisions")

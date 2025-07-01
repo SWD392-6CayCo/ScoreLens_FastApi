@@ -34,8 +34,8 @@
     ],
     "message": "Player 6 potted ball 1",
     "details": {
-      "playerID": 6,
-      "gameSetID": 82,
+      "playerID": 290,
+      "gameSetID": 242,
       "scoreValue": true,
       "isFoul": false,
       "isUncertain": false,
