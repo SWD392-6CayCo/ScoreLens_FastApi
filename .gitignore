@@ -1,1 +1,4 @@
 .env
+ScoreLens_FastApi/app/ai/best.pt
+alembic/versions/__pycache__/e813387118e6_change_relationship.cpython-313.pyc
+alembic/versions/e813387118e6_change_relationship.py
