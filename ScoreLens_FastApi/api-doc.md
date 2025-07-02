@@ -32,7 +32,7 @@
         "time": 1.25
       }
     ],
-    "message": "Player 6 potted ball 1",
+    "message": "Player {} potted ball {}",
     "details": {
       "playerID": 290,
       "gameSetID": 242,

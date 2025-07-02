@@ -10,7 +10,7 @@ from ScoreLens_FastApi.app.api.v1 import s3_router, message_router, detect_route
 from ScoreLens_FastApi.app.exception.app_exception import AppException
 from ScoreLens_FastApi.app.exception.global_exception_handler import app_exception_handler, \
     validation_exception_handler, json_exception_handler
-from ScoreLens_FastApi.app.service.kafka_consumer_service import consume_partition
+from ScoreLens_FastApi.app.service.kafka_consumer_service import consume_all_partitions
 
 ############################################# Cấu hình logging #######################################################
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ---- Startup phase ----
-    consumer_thread = Thread(target=lambda: consume_partition(0), daemon=True)
+    consumer_thread = Thread(target=consume_all_partitions, daemon=True)
     consumer_thread.start()
     logger.info("Kafka consumer background task started.")
 

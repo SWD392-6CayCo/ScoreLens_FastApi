@@ -253,7 +253,6 @@ class DetectService:
                 self.shot_count += 1
                 self.current_shot = Shot(self.shot_count, prev_positions.copy())
                 logger.info(f"--- SHOT #{self.current_shot.shot_number} HAS STARTED (Movement Detected) ---")
-
         if self.shot_in_progress:
             self.update_shot_events(prev_positions, current_positions, frame)
 
