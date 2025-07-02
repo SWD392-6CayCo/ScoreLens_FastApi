@@ -8,12 +8,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def send_to_java(msg: ProducerRequest):
+def send_to_java(msg: ProducerRequest, table_id: str):
     try:
         p = producer()
-        p.send(TOPIC_PRODUCER, value=msg.model_dump_json(), partition=0)
+
+        key_bytes = table_id.encode('utf-8') if table_id else None
+
+        p.send(
+            TOPIC_PRODUCER,
+            key=key_bytes,
+            value=msg.model_dump_json()
+        )
         p.flush()
-        logger.info(f"Sent Kafka message to topic {TOPIC_PRODUCER}: {msg}")
+        logger.info(f"Sent Kafka message to topic {TOPIC_PRODUCER} with key {table_id}: {msg}")
     except Exception as e:
         logger.exception(f"Failed to send message to Kafka: {e}")
         raise AppException(

@@ -9,6 +9,7 @@
 ```json
 {
   "code": "LOGGING",
+  "tableID": "23374e21-2391-41b0-b275-651df88b3b04",
   "data": {
     "level": "easy",
     "type": "score_create",

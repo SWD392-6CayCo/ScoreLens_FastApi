@@ -100,19 +100,22 @@ def handle_code_value(event, table_id):
     data = event.get("data")
     match KafkaCode(code_value):
         case KafkaCode.RUNNING:
-            send_to_java(ProducerRequest(code=KafkaCode.RUNNING, data="Send heart beat to spring boot"))
+            send_to_java(
+                ProducerRequest(code=KafkaCode.RUNNING, tableID=table_id, data="Send heart beat to spring boot"),
+                table_id
+            )
 
         case KafkaCode.DELETE_PLAYER:
             player_id = event.get("data")
             with next(get_db()) as db:
                 count = delete_kafka_message_by_player(db, player_id)
-                send_to_java(ProducerRequest(code=KafkaCode.DELETE_CONFIRM, data=count))
+                send_to_java(ProducerRequest(code=KafkaCode.DELETE_CONFIRM, tableID=table_id, data=count), table_id)
 
         case KafkaCode.DELETE_GAME_SET:
             game_set_id = event.get("data")
             with next(get_db()) as db:
                 count = delete_kafka_message_by_game_set(db,game_set_id)
-                send_to_java(ProducerRequest(code=KafkaCode.DELETE_CONFIRM, data=count))
+                send_to_java(ProducerRequest(code=KafkaCode.DELETE_CONFIRM, tableID=table_id, data=count), table_id)
 
         case KafkaCode.START_STREAM:
             try:
@@ -121,7 +124,10 @@ def handle_code_value(event, table_id):
 
                 # Lấy lại và in ra state để kiểm tra
                 match_info = MatchState.get_match_info(table_id, {})
-                print(f"Match info for table {table_id}: {match_info}")
+                import json
+
+                print("=== Match state ===")
+                print(match_info)
 
                 camera_url = match_info.get("camera_url")
                 print(f"Camera url for table {table_id}: {camera_url}")

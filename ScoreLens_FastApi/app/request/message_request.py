@@ -76,6 +76,7 @@ class LogMessageRequest(BaseModel):
 
 class ProducerRequest(BaseModel):
     code: KafkaCode
+    tableID: str
     data: Any
 
     class Config:

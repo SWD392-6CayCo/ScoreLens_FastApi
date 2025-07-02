@@ -27,11 +27,13 @@ def create_message(
             ...,
             description="Example JSON format for log_request is available in the API doc: api-doc.md",
         ),
+        table_id: str = Form(...),
         file: UploadFile = File(...),
         db: Session = Depends(get_db)
 ):
     # parse json string to Pydantic ProducerRequest and parse PR data to LogMsgReq
     tmp = parse_json_to_producer_request(log_request)
+
     log_message = convert_producer_request_to_log_message_create_request(tmp)
 
     # convert from create to msg, để trống scene_url
@@ -50,7 +52,7 @@ def create_message(
     tmp.data = message_request
 
     # kafka send msg
-    send_to_java(tmp)
+    send_to_java(tmp, table_id)
 
     return convert_kafka_message_to_response(message)
 

@@ -22,6 +22,13 @@ class MatchState:
         return cls.tables.get(table_id, default)
 
     @classmethod
+    def get_all_match_states(cls):
+        """
+        Trả về toàn bộ state của tất cả các bàn hiện đang lưu.
+        """
+        return cls.tables
+
+    @classmethod
     def get_current_team(cls, table_id):
         state = cls.tables[table_id]
         return state["current_match_info"]["teams"][state["current_team_index"]]
