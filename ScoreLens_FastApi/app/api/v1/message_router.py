@@ -45,14 +45,14 @@ def create_message(
     #add url to req
     message_request.details.sceneUrl = file_url
 
-    # save into db
-    message = message_service.create_kafka_message(db, message_request)
-
-    #add url to tmp
+    # add data to tmp
     tmp.data = message_request
 
     # kafka send msg
     send_to_java(tmp, table_id)
+
+    # save into db
+    message = message_service.create_kafka_message(db, message_request)
 
     return convert_kafka_message_to_response(message)
 
