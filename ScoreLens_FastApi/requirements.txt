@@ -18,27 +18,24 @@ sqlalchemy
 psycopg2-binary
 alembic
 
-# AI Detection & RTSP streaming (YOLOv5)
-torch
---index-url https://download.pytorch.org/whl/cu118
-torchvision
---index-url https://download.pytorch.org/whl/cu118
-torchaudio
---index-url https://download.pytorch.org/whl/cu118
-
 opencv-python              # OpenCV, hỗ trợ đọc video stream
 opencv-python-headless     # Nếu chạy trên server/headless
 numpy                      # Xử lý toạ độ và data AI
 pandas
 ultralytics
 
-
-
 #-e ./third_party/yolov5
 #git clone https://github.com/ultralytics/yolov5.git
 
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+#how to run
+#uvicorn ScoreLens_FastApi.main:app --reload --port 8012
+## "cameraUrl": "https://scorelens.s3.ap-southeast-2.amazonaws.com/video/output.mp4",
 
 
+#Check GPU
+#python -c "import torch; print('PyTorch version:', torch.__version__); print('CUDA available:', torch.cuda.is_available()); print('GPU name:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
 
 
 

@@ -13,7 +13,7 @@ from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy 
 import logging
 import json
 
-from ScoreLens_FastApi.app.state_manager_class.match_state import MatchState
+from ScoreLens_FastApi.app.state_manager_class.match_state import MatchState8Ball
 from ScoreLens_FastApi.app.state_manager_class.detect_state import DetectState
 from ScoreLens_FastApi.app.request.message_request import ProducerRequest
 from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
@@ -130,7 +130,7 @@ def handle_code_value(event):
         case KafkaCode.START_STREAM:
             try:
                 #lưu thông tin người chơi
-                MatchState.set_match_info(data)
+                MatchState8Ball.set_match_info(data)
 
                 #lấy url camera
                 if data and "cameraUrl" in data:
@@ -157,7 +157,7 @@ def handle_code_value(event):
                 print("Error processing message:", e)
 
         case KafkaCode.STOP_STREAM:
-            MatchState.clear_match_info()  # dùng hàm clear trong MatchState
+            MatchState8Ball.clear_match_info()  # dùng hàm clear trong MatchState
             DetectState.stop_detection()
             print("Match info cleared.")
 
