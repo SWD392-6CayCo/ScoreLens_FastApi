@@ -1,0 +1,31 @@
+{
+  "code": "START_STREAM",
+  "data": {
+    "cameraUrl": "D:\\RTSP\\Videos\\9BI_Set_2.mp4",
+    "sets": [
+      {
+        "gameSetID": 245
+      }
+    ],
+    "teams": [
+      {
+        "teamID": 270,
+        "players": [
+          {
+            "playerID": 293,
+            "name": "Player1"
+          }
+        ]
+      },
+      {
+        "teamID": 271,
+        "players": [
+          {
+            "playerID": 294,
+            "name": "Player2"
+          }
+        ]
+      }
+    ]
+  }
+}
