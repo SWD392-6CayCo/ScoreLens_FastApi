@@ -13,6 +13,7 @@ from ScoreLens_FastApi.app.state_manager_class.match_state import MatchState9Bal
 import json
 import threading
 from ScoreLens_FastApi.app.api.v1.api_client import KafkaAPIClient
+import time
 
 
 class MatchState:
@@ -47,6 +48,7 @@ class ScoreAnalyzerAPI:
 
     def analyze_shot(
         self,
+        table_id: str,
         shot_number: int,
         cue_ball_id: int,
         ball_movements: dict,
@@ -82,6 +84,7 @@ class ScoreAnalyzerAPI:
 
         shot_data = {
             "code": "LOGGING",
+            "tableID": table_id,
             "data": {
                 "level": "easy",  # Có thể để "easy" hoặc truyền vào
                 "type": "score_create",
@@ -194,6 +197,7 @@ class VideoStream:
         return True
 
     def _run(self):
+        fps = 30  # hoặc 25 tùy camera
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
@@ -201,6 +205,7 @@ class VideoStream:
                 continue
             with self.lock:
                 self.latest_frame = frame
+            time.sleep(1 / fps)
 
     def read(self):
         with self.lock:
@@ -214,10 +219,11 @@ class VideoStream:
 
 # --- DetectService ---
 class DetectService:
-    def __init__(self, rtsp_url, model_path):
-        MatchState9Ball.lowest_ball = 2
+    def __init__(self, rtsp_url, model_path, table_id: str):
+        MatchState9Ball.lowest_ball = 1
         # DỜI DÒNG KHỞI TẠO API CLIENT VÀO ĐÂY
         self.api_client = KafkaAPIClient("http://127.0.0.1:8012")
+        self.table_id = table_id
         self.score_api_analyzer = ScoreAnalyzerAPI();
         self.running = False
         self.cue_ball_id = 14
@@ -252,22 +258,49 @@ class DetectService:
     def stop(self):
         self.running = False
         self.video_stream.stop()
-        time.sleep(0.5)
+        time.sleep(0.1)
         cv2.destroyAllWindows()
 
     def _run(self):
         cv2.namedWindow("Detection", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("Detection", 1280, 720)
+        # while self.running:
+        #     if self.is_paused: continue
+        #     frame = self.video_stream.read()
+        #     if frame is None: continue
+        #     frame = self.detect_frame(frame)
+        #     self.handle_game_state(frame)
+        #     cv2.imshow("Detection", frame)
+        #     key = cv2.waitKey(33) & 0xFF
+        #     if key == ord('q'): self.stop(); break
+        #     if key == ord(' '): self.is_paused = not self.is_paused
+        prev_time = time.time()
+
         while self.running:
-            if self.is_paused: continue
+            if self.is_paused:
+                time.sleep(0.1)
+                continue
+
             frame = self.video_stream.read()
             if frame is None: continue
+
             frame = self.detect_frame(frame)
             self.handle_game_state(frame)
+
             cv2.imshow("Detection", frame)
+
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'): self.stop(); break
-            if key == ord(' '): self.is_paused = not self.is_paused
+            if key == ord('q'):
+                self.stop()
+                break
+            if key == ord(' '):
+                self.is_paused = not self.is_paused
+
+            # Delay để giữ 30 FPS
+            elapsed = time.time() - prev_time
+            sleep_time = max(1.0 / 30 - elapsed, 0)
+            time.sleep(sleep_time)
+            prev_time = time.time()
 
     # def detect_frame(self, frame):
     #     results = self.model.predict(source=frame, conf=0.5, device=self.device, verbose=False)
@@ -365,6 +398,7 @@ class DetectService:
 
                 # 4. Sử dụng ScoreAnalyzerAPI để tạo payload cuối cùng
                 shot_data = self.score_api_analyzer.analyze_shot(
+                    table_id=self.table_id,
                     shot_number=self.current_shot.shot_number,
                     cue_ball_id=self.cue_ball_id,
                     ball_movements=ball_movements,
@@ -381,7 +415,7 @@ class DetectService:
                 if hasattr(self, 'api_client'):
                     logger.info(f"Sending formatted shot data to API: {json.dumps(shot_data, indent=2)}")
                     # Dòng này sẽ gửi dữ liệu đã được định dạng chuẩn
-                    self.api_client.send_shot_log(shot_data, frame)
+                    self.api_client.send_shot_log(shot_data, frame , self.table_id)
 
                     # 6. Xử lý logic game và reset cho cú đánh tiếp theo (giữ nguyên)
                 # Bạn có thể truyền `shot_data` hoặc `is_foul`, `potted_balls` vào handle_game_state nếu cần
@@ -511,8 +545,18 @@ if __name__ == '__main__':
     RTSP_URL = match_info["data"].get("cameraUrl", "rtsp://localhost:8554/mystream")
     MODEL_PATH = "best.pt"
 
-    # Khởi tạo dịch vụ detect
-    service = DetectService(rtsp_url=RTSP_URL, model_path=MODEL_PATH)
+    TABLE_ID = match_info.get("tableID")
+    if not TABLE_ID:
+        # Dừng chương trình nếu không tìm thấy tableID để tránh lỗi sau này
+        raise ValueError("Lỗi: không tìm thấy 'tableID' trong file match_info.json")
+
+    # BƯỚC 2: Truyền TABLE_ID vào khi khởi tạo DetectService
+    logger.info(f"Initializing service for table: {TABLE_ID}")
+    service = DetectService(
+        rtsp_url=RTSP_URL,
+        model_path=MODEL_PATH,
+        table_id=TABLE_ID  # <-- Truyền tham số bị thiếu vào đây
+    )
     service.start()
 
     try:

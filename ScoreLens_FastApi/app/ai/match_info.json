@@ -1,7 +1,8 @@
 {
   "code": "START_STREAM",
+  "tableID" : "23374e21-2391-41b0-b275-651df88b3b04",
   "data": {
-    "cameraUrl": "D:\\RTSP\\Videos\\9BI_Set_2.mp4",
+    "cameraUrl": "C:\\Users\\ADMIN\\Downloads\\Test_2.mp4",
     "sets": [
       {
         "gameSetID": 245
