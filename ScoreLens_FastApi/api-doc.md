@@ -9,6 +9,7 @@
 ```json
 {
   "code": "LOGGING",
+  "tableID": "23374e21-2391-41b0-b275-651df88b3b04",
   "data": {
     "level": "easy",
     "type": "score_create",
@@ -32,7 +33,7 @@
         "time": 1.25
       }
     ],
-    "message": "Player 6 potted ball 1",
+    "message": "Player {} potted ball {}",
     "details": {
       "playerID": 290,
       "gameSetID": 242,
