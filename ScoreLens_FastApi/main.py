@@ -2,7 +2,6 @@ import logging
 import json
 import asyncio  # Import asyncio
 from contextlib import asynccontextmanager
-# from threading import Thread # Không cần thiết nữa
 
 from fastapi import FastAPI
 from pydantic import ValidationError
@@ -40,10 +39,13 @@ async def lifespan(app: FastAPI):
     if consumer_task:
         consumer_task.cancel()
         try:
-            await consumer_task  # Đợi tác vụ hủy hoàn tất
+            # SỬA ĐỔI: Thêm timeout cho việc đợi tác vụ consumer dừng
+            await asyncio.wait_for(consumer_task, timeout=10.0)  # Đợi tối đa 10 giây
             logger.info("Kafka consumer background task stopped.")
         except asyncio.CancelledError:
             logger.info("Kafka consumer background task confirmed cancelled.")
+        except asyncio.TimeoutError:
+            logger.warning("Kafka consumer background task timed out during shutdown. It might still be running.")
         except Exception as e:
             logger.error(f"Error stopping Kafka consumer task: {e}")
 
@@ -69,6 +71,4 @@ def health_check():
 # Include routers
 app.include_router(s3_router.router)
 app.include_router(message_router.router)
-# Đảm bảo bạn include router xử lý detection nếu nó chưa được include
-# from ScoreLens_FastApi.app.api.v1 import detect_router # Ví dụ
-# app.include_router(detect_router.router)
+

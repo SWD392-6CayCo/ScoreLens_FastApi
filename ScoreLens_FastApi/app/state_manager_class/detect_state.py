@@ -2,6 +2,7 @@ import os
 import logging
 from ultralytics import YOLO
 import asyncio
+import cv2  # Import OpenCV
 from typing import Optional, List, Dict, Tuple
 from pydantic import BaseModel, Field
 from functools import lru_cache
@@ -10,31 +11,36 @@ from functools import lru_cache
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+
 # --- Định nghĩa các Pydantic Models ---
-# Đảm bảo các models này khớp với cấu trúc JSON bạn gửi từ Spring Boot
 class Player(BaseModel):
     id: int
     name: str
+
 
 class Team(BaseModel):
     id: int
     players: List[Player]
 
+
 class GameSet(BaseModel):
     id: int
     race_to: int
 
-class MatchData(BaseModel):
+
+class MatchData(BaseModel):  # Sửa lỗi: MatchData cần kế thừa từ BaseModel
     camera: str
     total_set: int
     sets: List[GameSet]
     teams: List[Team]
+
 
 class MatchState9Ball(BaseModel):
     code: str
     table_id: str
     mode_id: int
     data: MatchData
+
 
 # --- Đường dẫn đến file best.pt của bạn ---
 YOLOV8_MODEL_PATH = os.getenv("YOLOV8_MODEL_PATH", "ai/best.pt")
@@ -55,6 +61,7 @@ def load_yolov8_model():
     except Exception as e:
         logger.error(f"Failed to load YOLOv8 model from {YOLOV8_MODEL_PATH}: {e}")
         raise
+
 
 # Tải model ngay khi file này được import để sẵn sàng sử dụng.
 yolov8_model_instance = None
@@ -92,7 +99,7 @@ async def detect_state(match_state: MatchState9Ball, stop_event: asyncio.Event):
             stream=True,
             conf=0.25,
             iou=0.7,
-            show=True,      # Đặt thành TRUE để hiển thị cửa sổ video
+            show=True,  # Đặt thành TRUE để hiển thị cửa sổ video
             save=False,
             verbose=False
         )
@@ -122,7 +129,9 @@ async def detect_state(match_state: MatchState9Ball, stop_event: asyncio.Event):
                     elif class_name == "pocket":
                         pass
 
-            await asyncio.sleep(0.01)  # Tạm dừng để không gây quá tải
+            # SỬA ĐỔI: Thêm một asyncio.sleep nhỏ để nhường quyền kiểm soát cho event loop
+            # Điều này giúp tác vụ phản hồi nhanh hơn với tín hiệu hủy và Ctrl+C
+            await asyncio.sleep(0.001)  # Hoặc asyncio.sleep(0)
 
     except asyncio.CancelledError:
         # Xử lý khi tác vụ bị hủy (ví dụ: từ hàm stop_detection_for_table)
@@ -137,6 +146,10 @@ async def detect_state(match_state: MatchState9Ball, stop_event: asyncio.Event):
             if _active_detection_tasks[table_id][0] == asyncio.current_task():
                 del _active_detection_tasks[table_id]
                 logger.info(f"Removed detection task for table {table_id} from active tasks.")
+
+        # Đóng tất cả các cửa sổ OpenCV khi tác vụ kết thúc
+        cv2.destroyAllWindows()
+        logger.info(f"Closed OpenCV windows for table {table_id}.")
 
 
 async def start_detection_for_table(match_state: MatchState9Ball):
@@ -175,10 +188,13 @@ async def stop_detection_for_table(table_id: str):
         # Cố gắng hủy tác vụ. Điều này sẽ gây ra asyncio.CancelledError trong detect_state.
         task.cancel()
         try:
-            await task  # Đợi tác vụ hoàn thành việc hủy
+            # Đợi tác vụ hoàn thành việc hủy, với một timeout để tránh treo
+            await asyncio.wait_for(task, timeout=5.0)  # Đợi tối đa 5 giây
             logger.info(f"Detection task for table {table_id} successfully stopped.")
         except asyncio.CancelledError:
             logger.info(f"Detection task for table {table_id} confirmed as cancelled.")
+        except asyncio.TimeoutError:
+            logger.warning(f"Detection task for table {table_id} timed out during stop. It might still be running.")
         except Exception as e:
             logger.error(f"Error waiting for detection task for table {table_id} to stop: {e}")
         finally:

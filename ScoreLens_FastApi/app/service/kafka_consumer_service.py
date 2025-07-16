@@ -146,7 +146,7 @@ async def handle_code_value(event, table_id):
 
         case KafkaCode.STOP_STREAM:
             match = MatchState9Ball()
-            await stop_detection_for_table(match.table_id)
+            await stop_detection_for_table(table_id)
             match.clear_match_info()  # dùng hàm clear trong MatchState
 
 
