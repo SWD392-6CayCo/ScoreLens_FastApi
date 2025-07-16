@@ -1,5 +1,4 @@
-
-from ScoreLens_FastApi.app.config.kafka_consumer_config import consumer, TOPIC_CONSUMER
+from ScoreLens_FastApi.app.config.kafka_consumer_config import consumer, TOPIC_CONSUMER, TABLE_ID_KEY
 from ScoreLens_FastApi.app.exception.app_exception import AppException, ErrorCode
 from ScoreLens_FastApi.app.enum.kafka_code import KafkaCode
 from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy session
@@ -8,8 +7,9 @@ from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy 
 import logging
 import json
 
-from ScoreLens_FastApi.app.state_manager_class.match_state import MatchState8Ball
-from ScoreLens_FastApi.app.state_manager_class.detect_state import DetectState
+from ScoreLens_FastApi.app.state_manager_class.match_state import MatchState9Ball
+from ScoreLens_FastApi.app.state_manager_class.detect_state import detect_state, start_detection_for_table, \
+    stop_detection_for_table
 from ScoreLens_FastApi.app.request.message_request import ProducerRequest
 from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
 from ScoreLens_FastApi.app.service.message_service import delete_kafka_message_by_player, delete_kafka_message_by_game_set
@@ -17,12 +17,18 @@ from ScoreLens_FastApi.app.service.message_service import delete_kafka_message_b
 logger = logging.getLogger(__name__)
 
 
-def consume_all_partitions():
+async def consume_all_partitions():
     c = consumer()
-    c.subscribe([TOPIC_CONSUMER])
     try:
         for message in c:
-            process_message(message)
+            key = message.key.decode('utf-8') if message.key else None
+            value = message.value
+            logger.info(f"Received message: Key='{key}', Value='{value}'")
+            # lọc msg theo key = table_id
+            if key == TABLE_ID_KEY:
+                logger.info(f"Processing message for key {TABLE_ID_KEY}: {value}")
+                await process_message(message)
+
     except KeyboardInterrupt:
         logger.info("Kafka consumer stopped by user.")
     except Exception as e:
@@ -37,7 +43,7 @@ def consume_all_partitions():
         logger.info("Kafka consumer closed.")
 
 
-def process_message(message):
+async def process_message(message):
     try:
         table_id = message.key.decode("utf-8") if message.key else "UNKNOWN"
 
@@ -83,7 +89,7 @@ def process_message(message):
             logger.warning(f"Message at offset {message.offset} missing or empty data.")
             return
 
-        handle_code_value(event, table_id)
+        await handle_code_value(event, table_id)
 
     except Exception as e:
         logger.error(f"Failed to process message at offset {message.offset}: {e}")
@@ -95,9 +101,10 @@ def process_message(message):
 
 
 # xử lí enum kafka_code
-def handle_code_value(event, table_id):
+async def handle_code_value(event, table_id):
     code_value = event.get("code")
     data = event.get("data")
+    mode_id = event.get("modeID")
     match KafkaCode(code_value):
         case KafkaCode.RUNNING:
             send_to_java(
@@ -119,29 +126,29 @@ def handle_code_value(event, table_id):
 
         case KafkaCode.START_STREAM:
             try:
-                #lưu thông tin người chơi
-                MatchState8Ball.set_match_info(data)
+                if mode_id == 2:
+                    # lưu thông tin người chơi
+                    match = MatchState9Ball()
+                    match.set_from_json(event)
 
-                # Lấy lại và in ra state để kiểm tra
-                match_info = MatchState.get_match_info(table_id, {})
-                import json
+                    print("=== Match state ===")
+                    print(match)
 
-                print("=== Match state ===")
-                print(match_info)
+                    camera_url = match.data.camera_url
 
-                camera_url = match_info.get("camera_url")
-                print(f"Camera url for table {table_id}: {camera_url}")
+                    print(f"Camera url for table {table_id}: {camera_url}")
 
-                # bắt đầu stream
-                # DetectState.start_detection(camera_url)
+                    await start_detection_for_table(match)
+                    print(f"Detection started for table: {table_id}")
 
             except Exception as e:
                 print("Error processing message:", e)
 
         case KafkaCode.STOP_STREAM:
-            MatchState8Ball.clear_match_info()  # dùng hàm clear trong MatchState
-            DetectState.stop_detection()
-            print("Match info cleared.")
+            match = MatchState9Ball()
+            await stop_detection_for_table(match.table_id)
+            match.clear_match_info()  # dùng hàm clear trong MatchState
+
 
         case _:
             print(f"No action defined for: {code_value}")

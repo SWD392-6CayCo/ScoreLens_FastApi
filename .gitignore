@@ -1,2 +1,11 @@
 .env
 /alembic
+certs/ca.pem
+certs/ca.pem
+certs/service.cert
+/certs
+certs/service.key
+certs/service.cert
+certs/service.key
+certs/service.cert
+certs/ca.pem

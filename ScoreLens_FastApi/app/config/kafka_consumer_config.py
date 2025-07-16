@@ -11,11 +11,13 @@ SSL_CA_CERT = os.getenv("SSL_CA_CERT")
 SSL_CERTFILE = os.getenv("SSL_CERTFILE")
 SSL_KEYFILE = os.getenv("SSL_KEYFILE")
 GROUP_ID = 'fastapi-consumer-group'
+TABLE_ID_KEY = os.getenv("KAFKA_TABLE_ID_KEY")
 
 # Khởi tạo consumer 1 lần duy nhất
 @lru_cache
 def consumer():
     return KafkaConsumer(
+        TOPIC_CONSUMER,
         bootstrap_servers=BOOTSTRAP_SERVERS,
         security_protocol="SSL",
         ssl_cafile=SSL_CA_CERT,
