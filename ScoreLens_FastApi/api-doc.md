@@ -14,6 +14,8 @@
     "level": "easy",
     "type": "score_create",
     "cueBallId": 0,
+    "targetBallId": 9,
+    "modeID": 2,
     "balls": [
       {
         "start": [1, 2],
