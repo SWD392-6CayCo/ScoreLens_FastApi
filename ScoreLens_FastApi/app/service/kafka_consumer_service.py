@@ -178,7 +178,7 @@ async def handle_code_value(event, table_id):
 
                 # 4. (Optional) Bắt đầu tiến trình xử lý video
                 camera_url = manager.config.data.camera_url
-                process = Process(target=startDetect, args=(camera_url,))
+                process = Process(target=startDetect, args=(camera_url, match_config, manager))
                 process.start()
                 detection_processes[table_id] = process
 

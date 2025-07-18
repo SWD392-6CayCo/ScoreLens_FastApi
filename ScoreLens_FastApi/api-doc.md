@@ -14,7 +14,7 @@ cd# API Documentation
     "cueBallId": 0,
     "targetBallId": 9,
     "modeID": 2,
-    "message": "",
+    "shotCount": 1,
     "details": {
       "playerID": 290,
       "gameSetID": 242,
