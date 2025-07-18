@@ -1,4 +1,3 @@
-# Tên file: stream_processor.py
 import cv2
 import torch
 from ultralytics import YOLO
@@ -8,10 +7,10 @@ from ScoreLens_FastApi.app.state_manager_class.billiards_match_manager import Ma
 
 
 # ==============================================================================
-# LỚP CỬA SỔ DEBUG (ĐÃ CẬP NHẬT)
+# LỚP CỬA SỔ DEBUG
 # ==============================================================================
 class DebugWindow:
-    def __init__(self, width=600, height=280):
+    def __init__(self, width=800, height=480):
         self.width = width
         self.height = height
         self.window_name = "Referee Panel"
@@ -19,7 +18,7 @@ class DebugWindow:
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
 
     def update(self, motion_state: str, balls_on_table: set, all_pocketed_balls: set, last_shot_report: dict,
-               current_target_ball: int, shot_count: int):
+               current_target_ball: int, shot_count: int, current_player_id: int, gameset_id: str, race_to_scores: dict):
         """Vẽ lại thông tin debug lên cửa sổ."""
         self.image.fill(0)
         y_pos = 40
@@ -30,19 +29,22 @@ class DebugWindow:
                     (255, 255, 0), font_thickness)
         y_pos += 40
 
-        target_text = f"BI MUC TIEU: {current_target_ball if current_target_ball is not None else 'N/A'}"
-        cv2.putText(self.image, target_text, (20, y_pos), cv2.FONT_HERSHEY_DUPLEX, font_scale, (0, 255, 255),
+        cv2.putText(self.image, f"LUOT DANH: Player {current_player_id}", (20, y_pos), cv2.FONT_HERSHEY_DUPLEX, font_scale,
+                    (255, 150, 0), font_thickness)
+        y_pos += 40
+
+        cv2.putText(self.image, f"GAME SET ID: {gameset_id}", (20, y_pos), cv2.FONT_HERSHEY_DUPLEX, font_scale,
+                    (255, 0, 255), font_thickness)
+        y_pos += 40
+
+        race_to_text = f"RACE TO: {', '.join([f'Player {pid}: {score}' for pid, score in race_to_scores.items()])}"
+        cv2.putText(self.image, race_to_text, (20, y_pos), cv2.FONT_HERSHEY_DUPLEX, font_scale, (0, 255, 255),
                     font_thickness)
         y_pos += 40
 
-        foul_text = "SHOT CUOI: DANG CHO"
-        foul_color = (255, 255, 255)
-        if last_shot_report:
-            # --- THAY ĐỔI: Cập nhật đường dẫn để đọc cấu trúc JSON mới ---
-            is_foul = last_shot_report.get('data', {}).get('details', {}).get('isFoul', False)
-            foul_text = f"SHOT CUOI: {'PHAM LOI' if is_foul else 'HOP LE'}"
-            foul_color = (0, 0, 255) if is_foul else (0, 255, 0)
-        cv2.putText(self.image, foul_text, (20, y_pos), cv2.FONT_HERSHEY_DUPLEX, font_scale, foul_color, font_thickness)
+        target_text = f"BI MUC TIEU: {current_target_ball if current_target_ball is not None else 'N/A'}"
+        cv2.putText(self.image, target_text, (20, y_pos), cv2.FONT_HERSHEY_DUPLEX, font_scale, (0, 255, 255),
+                    font_thickness)
         y_pos += 40
 
         pocketed_text = f"BI DA LOT: {str(sorted(list(all_pocketed_balls)))}"
@@ -62,14 +64,11 @@ class DebugWindow:
         cv2.imshow(self.window_name, self.image)
 
 
-
-#
 # ==============================================================================
-# LỚP SHOTDETECTOR (ĐÃ CẬP NHẬT)
+# LỚP SHOTDETECTOR
 # ==============================================================================
 class ShotDetector:
-    def __init__(self, stationary_threshold=5, frame_confirmation=50, false_detection_threshold=5):
-        # ... (phần khởi tạo giữ nguyên) ...
+    def __init__(self, stationary_threshold=20, frame_confirmation=50, false_detection_threshold=5, config_path="config.json"):
         self.STATIONARY_THRESHOLD_PIXELS = stationary_threshold
         self.FRAME_CONFIRMATION_COUNT = frame_confirmation
         self.FALSE_DETECTION_THRESHOLD = false_detection_threshold
@@ -83,10 +82,35 @@ class ShotDetector:
         self.last_shot_report = None
         self.all_pocketed_balls = set()
         self.shot_count = 0
+        self.cue_ball_missing_counter = 0
+        self.CUE_BALL_MIN_MISSING_FRAMES = 40
+        self.CUE_BALL_MAX_MISSING_FRAMES = 80
+        self.last_detected_ball_count = 0
+        self.view_change_frame_counter = 0
+        self.VIEW_CHANGE_FRAME_SKIP = 30
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                self.table_id = config["table_id"]
+                self.player_ids = config["player_ids"]
+                self.sets = config["sets"]
+        except Exception as e:
+            print(f"❌ Lỗi đọc file config: {e}")
+            self.table_id = "23374e21-2391-41b0-b275-651df88b3b04"
+            self.player_ids = [290, 291]
+            self.sets = [
+                {"gameSetID": 101, "raceTo": 3},
+                {"gameSetID": 102, "raceTo": 3}
+            ]
+        self.current_set_index = 0
+        self.gameset_id = self.sets[self.current_set_index]["gameSetID"]
+        self.race_to_limit = self.sets[self.current_set_index]["raceTo"]
+        self.race_to_scores = {pid: 0 for pid in self.player_ids}
+        self.current_player_id = self.player_ids[0]
+        self.current_player_index = 0
         print("✅ ShotDetector initialized.")
 
     def update_and_detect(self, yolo_results, class_names_map: dict):
-        # ... (phần logic của hàm này giữ nguyên) ...
         current_raw_positions = {}
         current_raw_detections = set()
         boxes = yolo_results.boxes.cpu().numpy()
@@ -104,6 +128,16 @@ class ShotDetector:
                 current_raw_positions[ball_id] = (x, y)
             except (ValueError, TypeError):
                 continue
+
+        # Phát hiện thay đổi góc quay dựa trên sự thay đổi đột ngột số lượng bi
+        current_ball_count = len(current_raw_detections)
+        if abs(current_ball_count - self.last_detected_ball_count) >= 3:  # Ngưỡng: thay đổi 3 bi
+            self.view_change_frame_counter = self.VIEW_CHANGE_FRAME_SKIP
+        self.last_detected_ball_count = current_ball_count
+
+        # Giảm bộ đếm thay đổi góc quay
+        if self.view_change_frame_counter > 0:
+            self.view_change_frame_counter -= 1
 
         disappeared_candidates = self.balls_on_table - current_raw_detections
         for ball_id in disappeared_candidates:
@@ -133,8 +167,16 @@ class ShotDetector:
             if ball_id not in newly_detected_balls:
                 del self.new_ball_counters[ball_id]
 
+        # Quản lý bộ đếm cho bi cái
+        if 0 not in current_raw_detections:
+            self.cue_ball_missing_counter += 1
+        else:
+            if self.cue_ball_missing_counter > 0:
+                print(f"Debug: Cue ball reappeared, resetting cue_ball_missing_counter from {self.cue_ball_missing_counter} to 0.")
+            self.cue_ball_missing_counter = 0
+
         is_motion_this_frame = False
-        if len(self.last_known_positions) > 0:
+        if len(self.last_known_positions) > 0 and self.view_change_frame_counter == 0:  # Chỉ kiểm tra chuyển động nếu không trong giai đoạn bỏ qua
             for ball_id, pos in current_raw_positions.items():
                 if ball_id in self.last_known_positions:
                     dist = np.linalg.norm(np.array(pos) - np.array(self.last_known_positions[ball_id]))
@@ -145,7 +187,7 @@ class ShotDetector:
         if self.motion_state == 'STATIONARY':
             if is_motion_this_frame:
                 self.motion_state = 'BALLS_MOVING'
-                self.stationary_frame_counter = 0
+                self.stationary_frame_counter = 5
                 if self.shot_count == 0:
                     self.shot_info["balls_at_shot_start"] = set(range(10))
                 else:
@@ -154,7 +196,7 @@ class ShotDetector:
         elif self.motion_state == 'BALLS_MOVING':
             if not is_motion_this_frame:
                 self.stationary_frame_counter += 1
-                if self.stationary_frame_counter >= self.FRAME_CONFIRMATION_COUNT:
+                if self.stationary_frame_counter >= self.FRAME_CONFIRMATION_COUNT and self.view_change_frame_counter == 0:
                     self._analyze_and_report_shot()
                     self.motion_state = 'STATIONARY'
             else:
@@ -166,38 +208,57 @@ class ShotDetector:
         """
         Phân tích cú đánh và tạo báo cáo JSON theo định dạng yêu cầu.
         """
-        # --- THAY ĐỔI: Toàn bộ logic tạo output được viết lại ---
         print("\n-------------------- SHOT ANALYSIS --------------------")
+        print(f"Debug: Balls on table: {sorted(list(self.balls_on_table))}")
+        print(f"Debug: Pocketed balls: {sorted(list(self.shot_info['balls_at_shot_start'] - self.balls_on_table))}")
+        print(f"Debug: Cue ball missing counter: {self.cue_ball_missing_counter}")
 
-        # Các giá trị này cần được truyền từ bên ngoài vào trong hệ thống thực tế
-        # Ở đây ta dùng giá trị giả định (placeholder)
-        table_id_placeholder = "23374e21-2391-41b0-b275-651df88b3b04"
-        player_id_placeholder = 290
-        gameset_id_placeholder = 242
-
-        # Phân tích các bi
         balls_at_start = self.shot_info["balls_at_shot_start"]
         balls_at_end = self.balls_on_table
         pocketed_balls = balls_at_start - balls_at_end
 
+        # Chỉ thêm các bi từ 1-9 vào all_pocketed_balls
         for ball_id in pocketed_balls:
-            if ball_id not in self.balls_on_table:
+            if ball_id != 0 and ball_id not in self.balls_on_table:
                 self.all_pocketed_balls.add(ball_id)
 
         targetable_balls = {b for b in balls_at_start if b != 0}
         target_ball_id = min(targetable_balls) if targetable_balls else -1
 
-        is_foul = 0 in pocketed_balls
-        foul_message = "Cue ball pocketed" if is_foul else "No foul"
+        # Nếu bi số 9 rớt lỗ, tăng race_to_scores và reset trạng thái bàn
+        if 9 in pocketed_balls:
+            self.race_to_scores[self.current_player_id] += 1
+            print(f"Player {self.current_player_id} wins a race! Current race score: {self.race_to_scores}")
+            # Reset trạng thái bàn về ban đầu (tất cả bi 0-9 có mặt)
+            self.balls_on_table = set(range(10))
+            self.all_pocketed_balls.clear()
 
-        # Tạo cấu trúc JSON
+        # Chuyển lượt nếu không có bi nào rớt hoặc bi cái mất từ 50-80 frame
+        cue_ball_pocketed = self.cue_ball_missing_counter >= self.CUE_BALL_MIN_MISSING_FRAMES and \
+                            self.cue_ball_missing_counter <= self.CUE_BALL_MAX_MISSING_FRAMES
+        if not pocketed_balls or cue_ball_pocketed:
+            self.current_player_index = (self.current_player_index + 1) % len(self.player_ids)
+            self.current_player_id = self.player_ids[self.current_player_index]
+            if cue_ball_pocketed:
+                print(f"Cue ball pocketed (missing for {self.cue_ball_missing_counter} frames), switching turn.")
+                self.cue_ball_missing_counter = 0  # Reset counter sau khi chuyển lượt
+
+        # Chuyển sang game set tiếp theo nếu raceTo đạt giới hạn
+        if self.race_to_scores[self.current_player_id] >= self.race_to_limit and self.current_set_index < len(self.sets) - 1:
+            self.current_set_index += 1
+            self.gameset_id = self.sets[self.current_set_index]["gameSetID"]
+            self.race_to_limit = self.sets[self.current_set_index]["raceTo"]
+            self.race_to_scores = {pid: 0 for pid in self.player_ids}
+            self.balls_on_table = set(range(10))
+            self.all_pocketed_balls.clear()
+            print(f"Chuyển sang game set mới: {self.gameset_id}")
+
         details = {
-            "playerID": player_id_placeholder,
-            "gameSetID": gameset_id_placeholder,
-            "scoreValue": len(pocketed_balls) > 0 and not is_foul,
-            "isFoul": is_foul,
+            "playerID": self.current_player_id,
+            "gameSetID": self.gameset_id,
+            "scoreValue": len(pocketed_balls) > 0,
             "isUncertain": False,
-            "message": foul_message
+            "message": "Shot completed"
         }
 
         data = {
@@ -210,21 +271,21 @@ class ShotDetector:
 
         output = {
             "code": "LOGGING",
-            "tableID": table_id_placeholder,
+            "tableID": self.table_id,
             "data": data
         }
 
         self.last_shot_report = output
         self.shot_count += 1
 
-        # In ra terminal để debug
         print(json.dumps(output, indent=2))
         print("-------------------------------------------------------\n")
 
+
 # ==============================================================================
-# HÀM XỬ LÝ VIDEO CHÍNH (ĐÃ CẬP NHẬT)
+# HÀM XỬ LÝ VIDEO CHÍNH
 # ==============================================================================
-def startDetect(rtsp_url: str, match_config: MatchState9Ball, manager: MatchManager):
+def startDetect(rtsp_url: str, match_config: MatchState9Ball = None, manager: MatchManager = None, config_path="config.json"):
     if torch.cuda.is_available():
         device = 'cuda'
     else:
@@ -236,7 +297,7 @@ def startDetect(rtsp_url: str, match_config: MatchState9Ball, manager: MatchMana
         print(f"❌ Lỗi tải model: {e}")
         return
 
-    shot_detector = ShotDetector()
+    shot_detector = ShotDetector(config_path=config_path)
     debug_window = DebugWindow()
 
     cap = cv2.VideoCapture(rtsp_url)
@@ -266,14 +327,16 @@ def startDetect(rtsp_url: str, match_config: MatchState9Ball, manager: MatchMana
         targetable_balls = {b for b in shot_detector.balls_on_table if b != 0}
         current_target_ball = min(targetable_balls) if targetable_balls else None
 
-        # --- THAY ĐỔI 3: Truyền shot_count vào cửa sổ debug ---
         debug_window.update(
             motion_state=shot_detector.motion_state,
             balls_on_table=shot_detector.balls_on_table,
             all_pocketed_balls=shot_detector.all_pocketed_balls,
             last_shot_report=shot_detector.last_shot_report,
             current_target_ball=current_target_ball,
-            shot_count=shot_detector.shot_count  # <--- Tham số mới
+            shot_count=shot_detector.shot_count,
+            current_player_id=shot_detector.current_player_id,
+            gameset_id=shot_detector.gameset_id,
+            race_to_scores=shot_detector.race_to_scores
         )
 
         if annotated_frame is not None:
@@ -298,5 +361,5 @@ def startDetect(rtsp_url: str, match_config: MatchState9Ball, manager: MatchMana
 
 
 if __name__ == '__main__':
-    test_url = r"C:\Users\ADMIN\Downloads\one_round.mp4"
+    test_url = r"D:\FPT\Ki7\SWD392\one_round.mp4"
     startDetect(test_url)
