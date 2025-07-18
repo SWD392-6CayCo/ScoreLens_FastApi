@@ -11,31 +11,10 @@
   "code": "LOGGING",
   "tableID": "23374e21-2391-41b0-b275-651df88b3b04",
   "data": {
-    "level": "easy",
-    "type": "score_create",
     "cueBallId": 0,
     "targetBallId": 9,
     "modeID": 2,
-    "balls": [
-      {
-        "start": [1, 2],
-        "end": [2, 3],
-        "potted": false
-      },
-      {
-        "start": [1, 8],
-        "end": [2, 5],
-        "potted": true
-      }
-    ],
-    "collisions": [
-      {
-        "ball1": 0,
-        "ball2": 1,
-        "time": 1.25
-      }
-    ],
-    "message": "Player {} potted ball {}",
+    "message": "",
     "details": {
       "playerID": 290,
       "gameSetID": 242,

@@ -1,12 +1,16 @@
+from tokenize import String
+
 from ScoreLens_FastApi.app.config.kafka_consumer_config import consumer, TOPIC_CONSUMER, TABLE_ID_KEY
 from ScoreLens_FastApi.app.exception.app_exception import AppException, ErrorCode
 from ScoreLens_FastApi.app.enum.kafka_code import KafkaCode
 from ScoreLens_FastApi.app.config.deps import get_db  # hàm get_db để lấy session
-
-
+import logging
+# Thêm các import cần thiết
+from multiprocessing import Process
+from ScoreLens_FastApi.app.ai.stream_processor import startDetect # Import hàm từ file đã tạo
+from ScoreLens_FastApi.app.state_manager_class.billiards_match_manager import MatchManager
 import logging
 import json
-
 from ScoreLens_FastApi.app.state_manager_class.match_state import MatchState9Ball
 from ScoreLens_FastApi.app.state_manager_class.detect_state import detect_state, start_detection_for_table, \
     stop_detection_for_table
@@ -15,6 +19,15 @@ from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
 from ScoreLens_FastApi.app.service.message_service import delete_kafka_message_by_player, delete_kafka_message_by_game_set
 
 logger = logging.getLogger(__name__)
+
+# Trong file kafka_consumer_service.py
+
+# Dictionary để quản lý các trận đấu đang diễn ra cho mỗi bàn
+# Key: table_id, Value: đối tượng MatchManager
+active_matches = {}
+
+# Dictionary để quản lý các tiến trình xử lý video
+detection_processes = {}
 
 
 async def consume_all_partitions():
@@ -124,31 +137,82 @@ async def handle_code_value(event, table_id):
                 count = delete_kafka_message_by_game_set(db,game_set_id)
                 send_to_java(ProducerRequest(code=KafkaCode.DELETE_CONFIRM, tableID=table_id, data=count), table_id)
 
+        # case KafkaCode.START_STREAM:
+        #     try:
+        #         if mode_id == 2:
+        #             # lưu thông tin người chơi
+        #             match = MatchState9Ball()
+        #             match.set_from_json(event)
+        #
+        #             print("=== Match state ===")
+        #             print(match)
+        #
+        #             camera_url = match.data.camera_url
+        #
+        #             print(f"Camera url for table {table_id}: {camera_url}")
+        #
+        #             await start_detection_for_table(match)
+        #             print(f"Detection started for table: {table_id}")
+        #
+        #     except Exception as e:
+        #         print("Error processing message:", e)
+
+        # case KafkaCode.STOP_STREAM:
+        #     match = MatchState9Ball()
+        #     await stop_detection_for_table(table_id)
+        #     match.clear_match_info()  # dùng hàm clear trong MatchState
+
         case KafkaCode.START_STREAM:
             try:
-                if mode_id == 2:
-                    # lưu thông tin người chơi
-                    match = MatchState9Ball()
-                    match.set_from_json(event)
+                # 1. Parse cấu hình từ Kafka message
+                match_config = MatchState9Ball()
+                match_config.set_from_json(event)
 
-                    print("=== Match state ===")
-                    print(match)
+                # 2. Tạo một đối tượng MatchManager mới
+                manager = MatchManager(match_config)
 
-                    camera_url = match.data.camera_url
+                # 3. Lưu manager này lại, liên kết với table_id
+                active_matches[table_id] = manager
 
-                    print(f"Camera url for table {table_id}: {camera_url}")
+                logger.info(f"✅ Match manager created and started for table: {table_id}")
 
-                    await start_detection_for_table(match)
-                    print(f"Detection started for table: {table_id}")
+                # 4. (Optional) Bắt đầu tiến trình xử lý video
+                camera_url = manager.config.data.camera_url
+                process = Process(target=startDetect, args=(camera_url,))
+                process.start()
+                detection_processes[table_id] = process
 
             except Exception as e:
-                print("Error processing message:", e)
+                logger.error(f"Error processing START_STREAM: {e}", exc_info=True)
 
         case KafkaCode.STOP_STREAM:
-            match = MatchState9Ball()
-            await stop_detection_for_table(table_id)
-            match.clear_match_info()  # dùng hàm clear trong MatchState
+            logger.info(f"🛑 Received STOP signal for table: {table_id}")
 
+            # 1. Dừng tiến trình xử lý video (nếu có)
+            if table_id in detection_processes:
+                process_to_stop = detection_processes[table_id]
+                if process_to_stop.is_alive():
+                    logger.info(f"Terminating video process (PID: {process_to_stop.pid})...")
+                    process_to_stop.terminate()  # Gửi tín hiệu dừng
+                    process_to_stop.join(timeout=5)  # Chờ tối đa 5s để tiến trình kết thúc
+                    logger.info("Video process terminated.")
+                # Xóa khỏi danh sách quản lý tiến trình
+                del detection_processes[table_id]
+            else:
+                logger.warning(f"No video process found for table {table_id} to stop.")
+
+            # 2. Xóa đối tượng quản lý logic trận đấu (nếu có)
+            if table_id in active_matches:
+                del active_matches[table_id]
+                logger.info(f"Match manager for table {table_id} has been removed.")
+            else:
+                logger.warning(f"No match manager found for table {table_id} to remove.")
+
+            logger.info(f"Cleanup for table {table_id} is complete.")
+
+            # Bạn có thể clear state của match ở đây nếu cần
+            match = MatchState9Ball()
+            match.clear_match_info()
 
         case _:
             print(f"No action defined for: {code_value}")
