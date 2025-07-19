@@ -1,9 +1,12 @@
 import cv2
 import torch
+from sqlalchemy import nulls_last
 from ultralytics import YOLO
 import numpy as np
 import json
 from ScoreLens_FastApi.app.state_manager_class.billiards_match_manager import MatchState9Ball, MatchManager
+from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
+from ScoreLens_FastApi.app.state_manager_class.detect_state import YOLOV8_MODEL_PATH
 
 
 # ==============================================================================
@@ -68,7 +71,7 @@ class DebugWindow:
 # LỚP SHOTDETECTOR
 # ==============================================================================
 class ShotDetector:
-    def __init__(self, stationary_threshold=20, frame_confirmation=50, false_detection_threshold=5, config_path="config.json"):
+    def __init__(self, matchInfo: MatchState9Ball, stationary_threshold=20, frame_confirmation=50, false_detection_threshold=5):
         self.STATIONARY_THRESHOLD_PIXELS = stationary_threshold
         self.FRAME_CONFIRMATION_COUNT = frame_confirmation
         self.FALSE_DETECTION_THRESHOLD = false_detection_threshold
@@ -83,32 +86,50 @@ class ShotDetector:
         self.all_pocketed_balls = set()
         self.shot_count = 0
         self.cue_ball_missing_counter = 0
-        self.CUE_BALL_MIN_MISSING_FRAMES = 40
+        self.CUE_BALL_MIN_MISSING_FRAMES = 10
         self.CUE_BALL_MAX_MISSING_FRAMES = 80
         self.last_detected_ball_count = 0
         self.view_change_frame_counter = 0
         self.VIEW_CHANGE_FRAME_SKIP = 30
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-                self.table_id = config["table_id"]
-                self.player_ids = config["player_ids"]
-                self.sets = config["sets"]
-        except Exception as e:
-            print(f"❌ Lỗi đọc file config: {e}")
-            self.table_id = "23374e21-2391-41b0-b275-651df88b3b04"
-            self.player_ids = [290, 291]
-            self.sets = [
-                {"gameSetID": 101, "raceTo": 3},
-                {"gameSetID": 102, "raceTo": 3}
-            ]
+        self.shot_count = 0
         self.current_set_index = 0
-        self.gameset_id = self.sets[self.current_set_index]["gameSetID"]
-        self.race_to_limit = self.sets[self.current_set_index]["raceTo"]
+        try:
+            if matchInfo is None:
+                raise ValueError("matchInfo is not provided.")
+
+            self.table_id = matchInfo.table_id
+
+            # Lấy danh sách ID người chơi từ các đối tượng Team/Player
+            self.player_ids = [player.player_id for team in matchInfo.data.teams for player in team.players]
+
+            # ✅ SỬA Ở ĐÂY: Chuyển từ truy cập dictionary sang truy cập thuộc tính object
+            # self.sets giờ sẽ là một list các đối tượng GameSet, không cần tạo lại dict
+            self.sets_objects = matchInfo.data.sets  # Đây là list các object GameSet
+
+        except Exception as e:
+            # Fallback nếu có lỗi
+            print(f"❌ Lỗi đọc config từ matchInfo: {e}. Sử dụng dữ liệu mặc định.")
+            self.table_id = "default-table-id"
+            self.player_ids = [445, 446]
+
+            # Giả lập lại cấu trúc object để code phía dưới chạy nhất quán
+            class MockSet:
+                def __init__(self, gid, rt):
+                    self.game_set_id = gid
+                    self.race_to = rt
+
+            self.sets_objects = [MockSet(331, 2)]
+
+            # ✅ SỬA Ở ĐÂY: Dùng cú pháp truy cập thuộc tính object
+        current_set_object = self.sets_objects[self.current_set_index]
+        self.gameset_id = current_set_object.game_set_id
+        self.race_to_limit = current_set_object.race_to
+
+        # Các dòng còn lại giữ nguyên
         self.race_to_scores = {pid: 0 for pid in self.player_ids}
         self.current_player_id = self.player_ids[0]
         self.current_player_index = 0
-        print("✅ ShotDetector initialized.")
+        print("✅ ShotDetector initialized consistently with objects.")
 
     def update_and_detect(self, yolo_results, class_names_map: dict):
         current_raw_positions = {}
@@ -226,12 +247,12 @@ class ShotDetector:
         target_ball_id = min(targetable_balls) if targetable_balls else -1
 
         # Nếu bi số 9 rớt lỗ, tăng race_to_scores và reset trạng thái bàn
-        if 9 in pocketed_balls:
-            self.race_to_scores[self.current_player_id] += 1
-            print(f"Player {self.current_player_id} wins a race! Current race score: {self.race_to_scores}")
-            # Reset trạng thái bàn về ban đầu (tất cả bi 0-9 có mặt)
-            self.balls_on_table = set(range(10))
-            self.all_pocketed_balls.clear()
+        # if 9 in pocketed_balls:
+        #     self.race_to_scores[self.current_player_id] += 1
+        #     print(f"Player {self.current_player_id} wins a race! Current race score: {self.race_to_scores}")
+        #     # Reset trạng thái bàn về ban đầu (tất cả bi 0-9 có mặt)
+        #     self.balls_on_table = set(range(10))
+        #     self.all_pocketed_balls.clear()
 
         # Chuyển lượt nếu không có bi nào rớt hoặc bi cái mất từ 50-80 frame
         cue_ball_pocketed = self.cue_ball_missing_counter >= self.CUE_BALL_MIN_MISSING_FRAMES and \
@@ -264,7 +285,7 @@ class ShotDetector:
         data = {
             "cueBallId": 0,
             "targetBallId": target_ball_id,
-            "modeID": 2,
+            "modeID": 3,
             "shotCount": self.shot_count,
             "details": details
         }
@@ -279,28 +300,36 @@ class ShotDetector:
         self.shot_count += 1
 
         print(json.dumps(output, indent=2))
+
+        #send to java
+        if isinstance(output, dict):
+            send_to_java(output, self.table_id)
+
         print("-------------------------------------------------------\n")
 
 
 # ==============================================================================
 # HÀM XỬ LÝ VIDEO CHÍNH
 # ==============================================================================
-def startDetect(rtsp_url: str, match_config: MatchState9Ball = None, manager: MatchManager = None, config_path="config.json"):
+def startDetect(rtsp_url: str, match_config: MatchState9Ball, manager: MatchManager):
     if torch.cuda.is_available():
         device = 'cuda'
     else:
         device = 'cpu'
     try:
-        model = YOLO('best.pt')
+        model = YOLO(YOLOV8_MODEL_PATH)
         model.to(device)
     except Exception as e:
         print(f"❌ Lỗi tải model: {e}")
         return
 
-    shot_detector = ShotDetector(config_path=config_path)
+    # shot_detector = ShotDetector(config_path=config_path)
+    shot_detector = ShotDetector(match_config)
+
     debug_window = DebugWindow()
 
-    cap = cv2.VideoCapture(rtsp_url)
+    # cap = cv2.VideoCapture(rtsp_url)
+    cap = cv2.VideoCapture(f"{rtsp_url}")
     if not cap.isOpened():
         print(f"❌ Lỗi mở video: {rtsp_url}")
         return
@@ -358,7 +387,6 @@ def startDetect(rtsp_url: str, match_config: MatchState9Ball = None, manager: Ma
     print("🎬 Đang giải phóng tài nguyên...")
     cap.release()
     cv2.destroyAllWindows()
-
 
 if __name__ == '__main__':
     test_url = r"D:\FPT\Ki7\SWD392\one_round.mp4"

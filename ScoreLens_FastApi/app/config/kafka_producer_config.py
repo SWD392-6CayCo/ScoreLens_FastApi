@@ -3,6 +3,7 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 from kafka import KafkaProducer
+import json
 
 
 load_dotenv()
@@ -18,7 +19,7 @@ def producer():
         ssl_cafile=os.getenv("SSL_CA_CERT"),
         ssl_certfile=os.getenv("SSL_CERTFILE"),
         ssl_keyfile=os.getenv("SSL_KEYFILE"),
-        value_serializer=lambda v: v.encode("utf-8"),
+        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
     )
 
 
