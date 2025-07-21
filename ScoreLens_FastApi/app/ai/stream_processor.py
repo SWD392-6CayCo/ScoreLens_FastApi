@@ -8,7 +8,6 @@ from ScoreLens_FastApi.app.state_manager_class.billiards_match_manager import Ma
 from ScoreLens_FastApi.app.service.kafka_producer_service import send_to_java
 from ScoreLens_FastApi.app.state_manager_class.detect_state import YOLOV8_MODEL_PATH
 
-
 # ==============================================================================
 # LỚP CỬA SỔ DEBUG
 # ==============================================================================
@@ -71,7 +70,7 @@ class DebugWindow:
 # LỚP SHOTDETECTOR
 # ==============================================================================
 class ShotDetector:
-    def __init__(self, matchInfo: MatchState9Ball, stationary_threshold=20, frame_confirmation=50, false_detection_threshold=5):
+    def __init__(self, matchInfo: MatchState9Ball, stationary_threshold=5, frame_confirmation=60, false_detection_threshold=5, config_path="config.json"):
         self.STATIONARY_THRESHOLD_PIXELS = stationary_threshold
         self.FRAME_CONFIRMATION_COUNT = frame_confirmation
         self.FALSE_DETECTION_THRESHOLD = false_detection_threshold
@@ -86,13 +85,8 @@ class ShotDetector:
         self.all_pocketed_balls = set()
         self.shot_count = 0
         self.cue_ball_missing_counter = 0
-        self.CUE_BALL_MIN_MISSING_FRAMES = 10
-        self.CUE_BALL_MAX_MISSING_FRAMES = 80
-        self.last_detected_ball_count = 0
-        self.view_change_frame_counter = 0
-        self.VIEW_CHANGE_FRAME_SKIP = 30
-        self.shot_count = 0
-        self.current_set_index = 0
+        self.CUE_BALL_MIN_MISSING_FRAMES = 10  # Thay đổi: Tăng từ 5 lên 10
+        self.CUE_BALL_MAX_MISSING_FRAMES = 80  # Thay đổi: Tăng từ 60 lên 80
         try:
             if matchInfo is None:
                 raise ValueError("matchInfo is not provided.")
@@ -124,12 +118,12 @@ class ShotDetector:
         current_set_object = self.sets_objects[self.current_set_index]
         self.gameset_id = current_set_object.game_set_id
         self.race_to_limit = current_set_object.race_to
-
-        # Các dòng còn lại giữ nguyên
+        self.current_set_index = 0
         self.race_to_scores = {pid: 0 for pid in self.player_ids}
         self.current_player_id = self.player_ids[0]
         self.current_player_index = 0
-        print("✅ ShotDetector initialized consistently with objects.")
+        self.finished_race = "no"
+        print("✅ ShotDetector initialized.")
 
     def update_and_detect(self, yolo_results, class_names_map: dict):
         current_raw_positions = {}
@@ -149,16 +143,6 @@ class ShotDetector:
                 current_raw_positions[ball_id] = (x, y)
             except (ValueError, TypeError):
                 continue
-
-        # Phát hiện thay đổi góc quay dựa trên sự thay đổi đột ngột số lượng bi
-        current_ball_count = len(current_raw_detections)
-        if abs(current_ball_count - self.last_detected_ball_count) >= 3:  # Ngưỡng: thay đổi 3 bi
-            self.view_change_frame_counter = self.VIEW_CHANGE_FRAME_SKIP
-        self.last_detected_ball_count = current_ball_count
-
-        # Giảm bộ đếm thay đổi góc quay
-        if self.view_change_frame_counter > 0:
-            self.view_change_frame_counter -= 1
 
         disappeared_candidates = self.balls_on_table - current_raw_detections
         for ball_id in disappeared_candidates:
@@ -192,12 +176,10 @@ class ShotDetector:
         if 0 not in current_raw_detections:
             self.cue_ball_missing_counter += 1
         else:
-            if self.cue_ball_missing_counter > 0:
-                print(f"Debug: Cue ball reappeared, resetting cue_ball_missing_counter from {self.cue_ball_missing_counter} to 0.")
             self.cue_ball_missing_counter = 0
 
         is_motion_this_frame = False
-        if len(self.last_known_positions) > 0 and self.view_change_frame_counter == 0:  # Chỉ kiểm tra chuyển động nếu không trong giai đoạn bỏ qua
+        if len(self.last_known_positions) > 0:
             for ball_id, pos in current_raw_positions.items():
                 if ball_id in self.last_known_positions:
                     dist = np.linalg.norm(np.array(pos) - np.array(self.last_known_positions[ball_id]))
@@ -208,7 +190,7 @@ class ShotDetector:
         if self.motion_state == 'STATIONARY':
             if is_motion_this_frame:
                 self.motion_state = 'BALLS_MOVING'
-                self.stationary_frame_counter = 5
+                self.stationary_frame_counter = 0
                 if self.shot_count == 0:
                     self.shot_info["balls_at_shot_start"] = set(range(10))
                 else:
@@ -217,7 +199,7 @@ class ShotDetector:
         elif self.motion_state == 'BALLS_MOVING':
             if not is_motion_this_frame:
                 self.stationary_frame_counter += 1
-                if self.stationary_frame_counter >= self.FRAME_CONFIRMATION_COUNT and self.view_change_frame_counter == 0:
+                if self.stationary_frame_counter >= self.FRAME_CONFIRMATION_COUNT:
                     self._analyze_and_report_shot()
                     self.motion_state = 'STATIONARY'
             else:
@@ -229,10 +211,6 @@ class ShotDetector:
         """
         Phân tích cú đánh và tạo báo cáo JSON theo định dạng yêu cầu.
         """
-        print("\n-------------------- SHOT ANALYSIS --------------------")
-        print(f"Debug: Balls on table: {sorted(list(self.balls_on_table))}")
-        print(f"Debug: Pocketed balls: {sorted(list(self.shot_info['balls_at_shot_start'] - self.balls_on_table))}")
-        print(f"Debug: Cue ball missing counter: {self.cue_ball_missing_counter}")
 
         balls_at_start = self.shot_info["balls_at_shot_start"]
         balls_at_end = self.balls_on_table
@@ -247,14 +225,15 @@ class ShotDetector:
         target_ball_id = min(targetable_balls) if targetable_balls else -1
 
         # Nếu bi số 9 rớt lỗ, tăng race_to_scores và reset trạng thái bàn
-        # if 9 in pocketed_balls:
-        #     self.race_to_scores[self.current_player_id] += 1
-        #     print(f"Player {self.current_player_id} wins a race! Current race score: {self.race_to_scores}")
-        #     # Reset trạng thái bàn về ban đầu (tất cả bi 0-9 có mặt)
-        #     self.balls_on_table = set(range(10))
-        #     self.all_pocketed_balls.clear()
+        if ball_id == 9 in pocketed_balls:
+            self.race_to_scores[self.current_player_id] += 1
+            self.finished_race = "yes"
+            print(f"Player {self.current_player_id} wins a race! Current race score: {self.race_to_scores}")
+            # Reset trạng thái bàn về ban đầu (tất cả bi 0-9 có mặt)
+            self.balls_on_table = set(range(10))
+            self.all_pocketed_balls.clear()
 
-        # Chuyển lượt nếu không có bi nào rớt hoặc bi cái mất từ 50-80 frame
+        # Chuyển lượt nếu không có bi nào rớt hoặc bi cái mất từ 10-80 frame
         cue_ball_pocketed = self.cue_ball_missing_counter >= self.CUE_BALL_MIN_MISSING_FRAMES and \
                             self.cue_ball_missing_counter <= self.CUE_BALL_MAX_MISSING_FRAMES
         if not pocketed_balls or cue_ball_pocketed:
@@ -262,7 +241,6 @@ class ShotDetector:
             self.current_player_id = self.player_ids[self.current_player_index]
             if cue_ball_pocketed:
                 print(f"Cue ball pocketed (missing for {self.cue_ball_missing_counter} frames), switching turn.")
-                self.cue_ball_missing_counter = 0  # Reset counter sau khi chuyển lượt
 
         # Chuyển sang game set tiếp theo nếu raceTo đạt giới hạn
         if self.race_to_scores[self.current_player_id] >= self.race_to_limit and self.current_set_index < len(self.sets) - 1:
@@ -272,6 +250,7 @@ class ShotDetector:
             self.race_to_scores = {pid: 0 for pid in self.player_ids}
             self.balls_on_table = set(range(10))
             self.all_pocketed_balls.clear()
+            self.finished_race = "no"
             print(f"Chuyển sang game set mới: {self.gameset_id}")
 
         details = {
@@ -279,13 +258,14 @@ class ShotDetector:
             "gameSetID": self.gameset_id,
             "scoreValue": len(pocketed_balls) > 0,
             "isUncertain": False,
-            "message": "Shot completed"
+            "message": "Shot completed",
+            "finished_race": self.finished_race
         }
 
         data = {
             "cueBallId": 0,
             "targetBallId": target_ball_id,
-            "modeID": 3,
+            "modeID": 2,
             "shotCount": self.shot_count,
             "details": details
         }
@@ -300,36 +280,28 @@ class ShotDetector:
         self.shot_count += 1
 
         print(json.dumps(output, indent=2))
-
-        #send to java
-        if isinstance(output, dict):
-            send_to_java(output, self.table_id)
-
         print("-------------------------------------------------------\n")
 
 
 # ==============================================================================
 # HÀM XỬ LÝ VIDEO CHÍNH
 # ==============================================================================
-def startDetect(rtsp_url: str, match_config: MatchState9Ball, manager: MatchManager):
+def startDetect(rtsp_url: str, match_config: MatchState9Ball = None, manager: MatchManager = None, config_path="config.json"):
     if torch.cuda.is_available():
         device = 'cuda'
     else:
         device = 'cpu'
     try:
-        model = YOLO(YOLOV8_MODEL_PATH)
+        model = YOLO('best.pt')
         model.to(device)
     except Exception as e:
         print(f"❌ Lỗi tải model: {e}")
         return
 
-    # shot_detector = ShotDetector(config_path=config_path)
-    shot_detector = ShotDetector(match_config)
-
+    shot_detector = ShotDetector(config_path=config_path)
     debug_window = DebugWindow()
 
-    # cap = cv2.VideoCapture(rtsp_url)
-    cap = cv2.VideoCapture(f"{rtsp_url}")
+    cap = cv2.VideoCapture(rtsp_url)
     if not cap.isOpened():
         print(f"❌ Lỗi mở video: {rtsp_url}")
         return
@@ -350,7 +322,6 @@ def startDetect(rtsp_url: str, match_config: MatchState9Ball, manager: MatchMana
                 shot_detector.update_and_detect(results[0], class_names_map)
                 annotated_frame = results[0].plot()
             except Exception as e:
-                print(f"Lỗi khi xử lý frame: {e}")
                 continue
 
         targetable_balls = {b for b in shot_detector.balls_on_table if b != 0}
@@ -388,6 +359,7 @@ def startDetect(rtsp_url: str, match_config: MatchState9Ball, manager: MatchMana
     cap.release()
     cv2.destroyAllWindows()
 
+
 if __name__ == '__main__':
-    test_url = r"D:\FPT\Ki7\SWD392\one_round.mp4"
+    test_url = r"D:\FPT\Ki7\SWD392\Demo_Fixed_2.mp4"
     startDetect(test_url)
